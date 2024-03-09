@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="23.05.0.0">
+<procedure name="main">
+<interface/>
+<body>
+<c>**明确设置一些配置参数，例如输入</c>
+<c>*尺寸和批量大小。</c>
+<l>InputImageWidth := 224</l>
+<l>InputImageHeight := 224</l>
+<l>InputImageDepth := 3</l>
+<l>BatchSize:=8</l>
+<l>hdl_name:='D:/desk/分割/UNet_3.hdl'</l>
+<c>* </c>
+<c>* 创建输入层.</c>
+<l>create_dl_layer_input ('segmentation_image_target', [InputImageWidth,InputImageHeight,1], [], [], DLLayerImageTarget)</l>
+<l>create_dl_layer_class_id_conversion (DLLayerImageTarget, 'target', 'from_class_id', [], [], DLLayerTarget)</l>
+<l>create_dl_layer_input ('image', [InputImageWidth,InputImageHeight,InputImageDepth], [], [], DLLayerInput)</l>
+<l>create_dl_layer_input ('weight_image', [InputImageWidth,InputImageHeight,1], [], [], DLLayerWeights)</l>
+<c>* </c>
+<c>* 创建网络的核心.</c>
+<c>***************</c>
+<c>***第一层输入***</c>
+<c>***************</c>
+<c>*第一个卷积层</c>
+<l>create_dl_layer_convolution (DLLayerInput, 'convolution_input_11',\
+                             3, 1, 1,64, 1, 'none', 'relu',\
+                             'bias_filler_variance_norm', 'norm_out', DLLayerConvolution_input_11)</l>
+<c></c>
+<c>*第二个卷积层</c>
+<l>create_dl_layer_convolution (DLLayerConvolution_input_11, 'convolution_input_12',\
+                             3, 1, 1,64, 1, 'none', 'relu',\
+                             'bias_filler_variance_norm', 'norm_out', DLLayerConvolution_input_12)</l>
+<c>*第一个池化层</c>
+<l>create_dl_layer_pooling (DLLayerConvolution_input_12, 'pooling1',\
+                         [2,2], [2,2], 'none', 'maximum', [], [], DLLayerPooling1)</l>
+<c></c>
+<c>***************</c>
+<c>***第二层输入***</c>
+<c>***************</c>
+<c>*第一个卷积层</c>
+<l>create_dl_layer_convolution (DLLayerPooling1, 'convolution_input_21',\
+                             3, 1, 1,128, 1, 'none', 'relu',\
+                             'bias_filler_variance_norm', 'norm_out', DLLayerConvolution_input_21)</l>
+<c></c>
+<c>*第二个卷积层</c>
+<l>create_dl_layer_convolution (DLLayerConvolution_input_21, 'convolution_input_22',\
+                             3, 1, 1,128, 1, 'none', 'relu',\
+                             'bias_filler_variance_norm', 'norm_out', DLLayerConvolution_input_22)</l>
+<c></c>
+<c>*第二个池化层</c>
+<l>create_dl_layer_pooling (DLLayerConvolution_input_22, 'pooling2',\
+                         [2,2], [2,2], 'none', 'maximum', [], [], DLLayerPooling2)</l>
+<c></c>
+<c>***************</c>
+<c>***第三层输入***</c>
+<c>***************</c>
+<c>*第一个卷积层</c>
+<l>create_dl_layer_convolution (DLLayerPooling2, 'convolution_input_31',\
+                             3, 1, 1,256, 1, 'none', 'relu',\
+                             'bias_filler_variance_norm', 'norm_out', DLLayerConvolution_input_31)</l>
+<c></c>
+<c>*第二个卷积层</c>
+<l>create_dl_layer_convolution (DLLayerConvolution_input_31, 'convolution_input_32',\
+                             3, 1, 1,256, 1, 'none', 'relu',\
+                             'bias_filler_variance_norm', 'norm_out', DLLayerConvolution_input_32)</l>
+<c></c>
+<c>*第三个池化层</c>
+<l>create_dl_layer_pooling (DLLayerConvolution_input_32, 'pooling3',\
+                         [2,2], [2,2], 'none', 'maximum', [], [], DLLayerPooling3)</l>
+<c>***************</c>
+<c>***第四层输入***</c>
+<c>***************</c>
+<c>*第一个卷积层</c>
+<l>create_dl_layer_convolution (DLLayerPooling3, 'convolution_input_41',\
+                             3, 1, 1,512, 1, 'none', 'relu',\
+                             'bias_filler_variance_norm', 'norm_out', DLLayerConvolution_input_41)</l>
+<c></c>
+<c>*第二个卷积层</c>
+<l>create_dl_layer_convolution (DLLayerConvolution_input_41, 'convolution_input_42',\
+                             3, 1, 1,512, 1, 'none', 'relu',\
+                             'bias_filler_variance_norm', 'norm_out', DLLayerConvolution_input_42)</l>
+<c></c>
+<c>*第四个池化层</c>
+<l>create_dl_layer_pooling (DLLayerConvolution_input_42, 'pooling4',\
+                         [2,2], [2,2], 'none', 'maximum', [], [], DLLayerPooling4)</l>
+<c></c>
+<c>***************</c>
+<c>***第五层输入***</c>
+<c>***************</c>
+<c>*第一个卷积层</c>
+<l>create_dl_layer_convolution (DLLayerPooling4, 'convolution_input_51',\
+                             3, 1, 1,1024, 1, 'none', 'relu',\
+                             'bias_filler_variance_norm', 'norm_out', DLLayerConvolution_input_51)</l>
+<c></c>
+<c>*第二个卷积层</c>
+<l>create_dl_layer_convolution (DLLayerConvolution_input_51, 'convolution_input_52',\
+                             3, 1, 1,1024, 1, 'none', 'relu',\
+                             'bias_filler_variance_norm', 'norm_out', DLLayerConvolution_input_52)</l>
+<c></c>
+<c>*第四个反卷积层</c>
+<l>create_dl_layer_transposed_convolution (DLLayerConvolution_input_52,'transposed_convolution4',\
+                                        2, 2, 512, 1, 'none', \
+                                        [], [], DLLayerTransposedConvolution4)</l>
+<c></c>
+<c></c>
+<c>***************</c>
+<c>***第四层输出***</c>
+<c>***************</c>
+<c>*第四次特征尺寸缩放</c>
+<l>create_dl_layer_zoom_size (DLLayerConvolution_input_42, 'zoom_size4', \
+                           12, 12, 'bilinear', 'false', [], [], DLLayerZoom4)</l>
+<c>*第四个连接层</c>
+<l>create_dl_layer_concat ([DLLayerZoom4,DLLayerTransposedConvolution4],\
+                        'concat4', 'depth', [], [], DLLayerConcat4)</l>
+<c>*第一个卷积层</c>
+<l>create_dl_layer_convolution (DLLayerConcat4, 'convolution_output_41',\
+                             3, 1, 1,512, 1, 'none', 'relu',\
+                             'bias_filler_variance_norm', 'norm_out', DLLayerConvolution_output_41)</l>
+<c></c>
+<c>*第二个卷积层</c>
+<l>create_dl_layer_convolution (DLLayerConvolution_output_41, 'convolution_output_42',\
+                             3, 1, 1,512, 1, 'none', 'relu',\
+                             'bias_filler_variance_norm', 'norm_out', DLLayerConvolution_output_42)</l>
+<c>*第三个反卷积层</c>
+<l>create_dl_layer_transposed_convolution (DLLayerConvolution_output_42,'transposed_convolution3',\
+                                        2, 2, 256, 1, 'none', \
+                                        [], [], DLLayerTransposedConvolution3)</l>
+<c></c>
+<c>***************</c>
+<c>***第三层输出***</c>
+<c>***************</c>
+<c></c>
+<c>*第三次特征尺寸缩放</c>
+<l>create_dl_layer_zoom_size (DLLayerConvolution_input_32, 'zoom_size3', \
+                           16, 16, 'bilinear', 'false', [], [], DLLayerZoom3)</l>
+<c>*第三个连接层</c>
+<l>create_dl_layer_concat ([DLLayerZoom3,DLLayerTransposedConvolution3],\
+                        'concat3', 'depth', [], [], DLLayerConcat3)</l>
+<c>*第一个卷积层</c>
+<l>create_dl_layer_convolution (DLLayerConcat3, 'convolution_output_31',\
+                             3, 1, 1,256, 1, 'none', 'relu',\
+                             'bias_filler_variance_norm', 'norm_out', DLLayerConvolution_output_31)</l>
+<c></c>
+<c>*第二个卷积层</c>
+<l>create_dl_layer_convolution (DLLayerConvolution_output_31, 'convolution_output_32',\
+                             3, 1, 1,256, 1, 'none', 'relu',\
+                             'bias_filler_variance_norm', 'norm_out', DLLayerConvolution_output_32)</l>
+<c>*第二个反卷积层</c>
+<l>create_dl_layer_transposed_convolution (DLLayerConvolution_output_32,'transposed_convolution2',\
+                                        2, 2, 128, 1, 'none', \
+                                        [], [], DLLayerTransposedConvolution2)</l>
+<c>***************</c>
+<c>***第二层输出***</c>
+<c>***************</c>
+<c>*第二次特征尺寸缩放</c>
+<l>create_dl_layer_zoom_size (DLLayerConvolution_input_22, 'zoom_size2', \
+                           24, 24, 'bilinear', 'false', [], [], DLLayerZoom2)</l>
+<c></c>
+<c>*第二个连接层</c>
+<l>create_dl_layer_concat ([DLLayerZoom2,DLLayerTransposedConvolution2],\
+                        'concat2', 'depth', [], [], DLLayerConcat2)</l>
+<c>*第一个卷积层</c>
+<l>create_dl_layer_convolution (DLLayerConcat2, 'convolution_output_21',\
+                             3, 1, 1,128, 1, 'none', 'relu',\
+                             'bias_filler_variance_norm', 'norm_out', DLLayerConvolution_output_21)</l>
+<c></c>
+<c>*第二个卷积层</c>
+<l>create_dl_layer_convolution (DLLayerConvolution_output_21, 'convolution_output_22',\
+                             3, 1, 1,128, 1, 'none', 'relu',\
+                             'bias_filler_variance_norm', 'norm_out', DLLayerConvolution_output_22)</l>
+<c>*第一个反卷积层</c>
+<l>create_dl_layer_transposed_convolution (DLLayerConvolution_output_22,'transposed_convolution1',\
+                                        2, 2, 64, 1, 'none', \
+                                        [], [], DLLayerTransposedConvolution1)</l>
+<c></c>
+<c>***************</c>
+<c>***第一层输出***</c>
+<c>***************</c>
+<c>*第一次特征尺寸缩放</c>
+<l>create_dl_layer_zoom_size (DLLayerConvolution_input_12, 'zoom_size1', \
+                           40, 40, 'bilinear', 'false', [], [], DLLayerZoom1)</l>
+<c>*第一个连接层</c>
+<l>create_dl_layer_concat ([DLLayerZoom1,DLLayerTransposedConvolution1],\
+                        'concat1', 'depth', [], [], DLLayerConcat1)</l>
+<c>*第一个卷积层</c>
+<l>create_dl_layer_convolution (DLLayerConcat1, 'convolution_output_11',\
+                             3, 1, 1,64, 1, 'none', 'relu',\
+                             'bias_filler_variance_norm', 'norm_out', DLLayerConvolution_output_11)</l>
+<c></c>
+<c>*第二个卷积层</c>
+<l>create_dl_layer_convolution (DLLayerConvolution_output_11, 'convolution_output_12',\
+                             3, 1, 1,64, 1, 'none', 'relu',\
+                             'bias_filler_variance_norm', 'norm_out', DLLayerConvolution_output_12)</l>
+<c></c>
+<c>*1x1卷积层</c>
+<l>create_dl_layer_convolution (DLLayerConvolution_output_12, 'convolution_output_13',\
+                             1, 1, 1,3, 1, 'none', 'relu',\
+                             'bias_filler_variance_norm', 'norm_out', DLLayerConvolution_output_13)</l>
+<c></c>
+<l>create_dl_layer_zoom_to_layer_size (DLLayerConvolution_output_13, DLLayerInput, 'zoom', 'bilinear', 'false', [], [], DLLayerZoom)</l>
+<c>* </c>
+<c>* 添加softmax和loss层以启用训练.</c>
+<l>create_dl_layer_softmax (DLLayerZoom, 'softmax', [], [], DLLayerSoftMax)</l>
+<l>create_dl_layer_loss_cross_entropy (DLLayerSoftMax, DLLayerTarget, DLLayerWeights, 'loss_cross_entropy', 1, [], [], DLLayerLossCrossEntropy)</l>
+<c>* </c>
+<c>*用类别id创建一个分割图像 .</c>
+<l>create_dl_layer_depth_max (DLLayerSoftMax, 'segmentation_image_softmax', 'argmax', [], [], DLLayerSegmentationSoftMax, _)</l>
+<l>create_dl_layer_class_id_conversion (DLLayerSegmentationSoftMax, 'segmentation_image', 'to_class_id', [], [], DLLayerSegmentationImage)</l>
+<c>* Create a segmentation confidence image.</c>
+<l>create_dl_layer_depth_max (DLLayerSoftMax, 'segmentation_confidence', 'value', [], [], _, DLLayerSegmentationConfidence)</l>
+<c></c>
+<c>* </c>
+<c>* 通过传递输出层列表来创建模型。</c>
+<c>*创建的模型直接包含所有层</c>
+<c>*或者间接地提供给这些输出层。</c>
+<l>create_dl_model ([DLLayerLossCrossEntropy,DLLayerSegmentationImage,DLLayerSegmentationConfidence], DLModelHandle)</l>
+<c></c>
+<l>set_dl_model_param (DLModelHandle, 'type', 'segmentation')</l>
+<c></c>
+<c>* </c>
+<c>* </c>
+<c>* Part 3 (optional): Add meta data to better specify the model later.</c>
+<l>create_dict (MetaData)</l>
+<l>set_dict_tuple (MetaData, 'model_creator', 'MVTec Software GmbH')</l>
+<l>set_dict_tuple (MetaData, 'model_info', 'Segmentation model with BatchNorm layer')</l>
+<l>set_dl_model_param (DLModelHandle, 'meta_data', MetaData)</l>
+<c>* </c>
+<c>* Write the model to file in order to use it in a subsequent</c>
+<c>* step. See our further examples in order how to do so,</c>
+<c>* e.g., dl_segmentation_workflow.hdev.</c>
+<c>* Press Run F5 (Run) to write the model and finish the example.</c>
+<l>stop ()</l>
+<l>write_dl_model (DLModelHandle, hdl_name)</l>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+</hdevelop>

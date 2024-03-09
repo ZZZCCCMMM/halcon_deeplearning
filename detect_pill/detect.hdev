@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="23.05.0.0">
+<procedure name="main">
+<interface/>
+<body>
+<l>init (BatchSizeInference, DLModelHandle, DLPreprocessParam, WindowHandleDict, DLDataInfo, ClassNames, ClassIDs, GenParam)</l>
+<l as_id="image_acquisition" as_name="Image Acquisition 01" as_grp="[2,3]" as_ord="1">read_image (Image, 'D:/procedure/halcon/HALCON-23.05-Progress/examples/images/pill_bag/pill_bag_001.png')</l>
+<l>detect (Image, DLPreprocessParam, DLModelHandle, BatchSizeInference, DLDataInfo, GenParam, WindowHandleDict)</l>
+<c></c>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+<procedure name="init">
+<interface>
+<oc>
+<par name="BatchSizeInference" base_type="ctrl" dimension="0"/>
+<par name="DLModelHandle" base_type="ctrl" dimension="0"/>
+<par name="DLPreprocessParam" base_type="ctrl" dimension="0"/>
+<par name="WindowHandleDict" base_type="ctrl" dimension="0"/>
+<par name="DLDataInfo" base_type="ctrl" dimension="0"/>
+<par name="ClassNames" base_type="ctrl" dimension="0"/>
+<par name="ClassIDs" base_type="ctrl" dimension="0"/>
+<par name="GenParam" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>dev_update_off ()</l>
+<l>query_available_dl_devices (['runtime', 'runtime'], ['gpu', 'cpu'], DLDeviceHandles)</l>
+<l>if (|DLDeviceHandles| == 0)</l>
+<l>    throw ('No supported device found to continue this example.')</l>
+<l>endif</l>
+<l>DLDevice := DLDeviceHandles[0]</l>
+<l>PreprocessParamFileName := 'D:/procedure/halcon/HALCON-23.05-Progress/examples/hdevelop/Deep-Learning/Detection/detect_pills_preprocess_param.hdict'</l>
+<l>RetrainedModelFileName := 'D:/procedure/halcon/HALCON-23.05-Progress/examples/hdevelop/Deep-Learning/Detection/detect_pills.hdl'</l>
+<l>BatchSizeInference := 1</l>
+<l>MinConfidence := 0.6</l>
+<l>MaxOverlap := 0.2</l>
+<l>MaxOverlapClassAgnostic := 0.7</l>
+<l>read_dl_model (RetrainedModelFileName, DLModelHandle)</l>
+<l>set_dl_model_param (DLModelHandle, 'batch_size', BatchSizeInference)</l>
+<l>set_dl_model_param (DLModelHandle, 'device', DLDevice)</l>
+<l>set_dl_model_param (DLModelHandle, 'min_confidence', MinConfidence)</l>
+<l>set_dl_model_param (DLModelHandle, 'max_overlap', MaxOverlap)</l>
+<l>set_dl_model_param (DLModelHandle, 'max_overlap_class_agnostic', MaxOverlapClassAgnostic)</l>
+<l>read_dict (PreprocessParamFileName, [], [], DLPreprocessParam)</l>
+<l>WindowHandleDict := dict{}</l>
+<l>DLDataInfo := dict{}</l>
+<l>get_dl_model_param (DLModelHandle, 'class_names', ClassNames)</l>
+<l>DLDataInfo.class_names := ClassNames</l>
+<l>get_dl_model_param (DLModelHandle, 'class_ids', ClassIDs)</l>
+<l>DLDataInfo.class_ids := ClassIDs</l>
+<l>GenParam := dict{scale_windows: 1.2}</l>
+<l>return ()</l>
+</body>
+<docu id="init">
+<parameters>
+<parameter id="BatchSizeInference"/>
+<parameter id="ClassIDs"/>
+<parameter id="ClassNames"/>
+<parameter id="DLDataInfo"/>
+<parameter id="DLModelHandle"/>
+<parameter id="DLPreprocessParam"/>
+<parameter id="GenParam"/>
+<parameter id="WindowHandleDict"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="detect">
+<interface>
+<io>
+<par name="Image" base_type="iconic" dimension="0"/>
+</io>
+<ic>
+<par name="DLPreprocessParam" base_type="ctrl" dimension="0"/>
+<par name="DLModelHandle" base_type="ctrl" dimension="0"/>
+<par name="BatchSizeInference" base_type="ctrl" dimension="0"/>
+<par name="DLDataInfo" base_type="ctrl" dimension="0"/>
+<par name="GenParam" base_type="ctrl" dimension="0"/>
+<par name="WindowHandleDict" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<l>gen_dl_samples_from_images (Image, DLSampleBatch)</l>
+<l>preprocess_dl_samples (DLSampleBatch, DLPreprocessParam)</l>
+<l>apply_dl_model (DLModelHandle, DLSampleBatch, [], DLResultBatch)</l>
+<l>for SampleIndex := 0 to BatchSizeInference - 1 by 1</l>
+<l>    DLSample := DLSampleBatch[SampleIndex]</l>
+<l>    DLResult := DLResultBatch[SampleIndex]</l>
+<l>    dev_display_dl_data (DLSample, DLResult, DLDataInfo, 'bbox_result', GenParam, WindowHandleDict)</l>
+<l>    dev_disp_text ('Press Run (F5) to continue', 'window', 'bottom', 'right', 'black', [], [])</l>
+<l>endfor</l>
+<l>dev_close_window_dict (WindowHandleDict)</l>
+<l>return ()</l>
+</body>
+<docu id="detect">
+<parameters>
+<parameter id="BatchSizeInference"/>
+<parameter id="DLDataInfo"/>
+<parameter id="DLModelHandle"/>
+<parameter id="DLPreprocessParam"/>
+<parameter id="GenParam"/>
+<parameter id="Image"/>
+<parameter id="WindowHandleDict"/>
+</parameters>
+</docu>
+</procedure>
+</hdevelop>

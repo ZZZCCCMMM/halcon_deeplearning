@@ -1,0 +1,1798 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="23.05.0.0">
+<procedure name="main">
+<interface/>
+<body>
+<c>*1 指定要推理的文件夹</c>
+<l>list_image_files ('inferImages', 'default', 'follow_links', ImageFiles)</l>
+<c>*2 读取模型</c>
+<l>read_dl_model ('dlt_model.hdl', DLModelHandle)</l>
+<c>*3 从模型导出预处理参数</c>
+<l>create_dl_preprocess_param_from_model (DLModelHandle, 'none', 'full_domain', [], [], [], DLPreprocessParam)</l>
+<c>* 查询电脑硬件，如果查不到，抛出异常，终止后续执行</c>
+<l>query_available_dl_devices (['runtime', 'runtime'], ['gpu', 'cpu'], DLDeviceHandles)</l>
+<l>if (|DLDeviceHandles| == 0)</l>
+<l>    throw ('No supported device found to continue.')</l>
+<l>endif</l>
+<c>*默认将GPU方法赋值</c>
+<l>DLDevice := DLDeviceHandles[0]</l>
+<c>*赋值给模型参数</c>
+<l>set_dl_model_param (DLModelHandle, 'device', DLDevice)</l>
+<c>*4 预处理后的图片参数大小拿出来</c>
+<l>image_width:=DLPreprocessParam.image_width</l>
+<l>image_height:=DLPreprocessParam.image_height</l>
+<c>*5 循环推理并显示，注意如何显示</c>
+<l>for i := 0 to |ImageFiles|-1 by 1</l>
+<l>    read_image (Image, ImageFiles[i])</l>
+<c>    *拿到实际图片大小</c>
+<l>    get_image_size (Image, Width, Height)</l>
+<l>    gen_dl_samples_from_images (Image, DLSampleInference)</l>
+<l>    preprocess_dl_samples (DLSampleInference, DLPreprocessParam)</l>
+<l>    apply_dl_model (DLModelHandle, DLSampleInference, [], DLResult)</l>
+<l>    Len:=|DLResult.bbox_confidence|</l>
+<c>    *肖苏华改写可视化结果，在原图上显示，需要根据原图和预处理后的图片大小做还原,主要，要将整数还原为实数！</c>
+<l>    k1:=Width/real(image_width)</l>
+<l>    k2:=Height/real(image_height)</l>
+<l>    for j:=0 to Len-1 by 1</l>
+<c>    *将名字和满意度都显示上来在原图，这个客户最关心</c>
+<l>    dev_disp_text (DLResult.bbox_class_name[j]+' '+DLResult.bbox_confidence[j], 'image',k1*DLResult.bbox_row1[j], k2*(DLResult.bbox_col1[j]),  'black', [], [])</l>
+<l>    endfor</l>
+<l>    stop ()</l>
+<l>endfor</l>
+<c></c>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+<procedure name="dev_example_init">
+<interface>
+<ic>
+<par name="ShowExampleScreens" base_type="ctrl" dimension="0"/>
+<par name="UsePretrainedModel" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<c>* This procedure initializes the graphic windows that are used for explanations during the example.</c>
+<c>* </c>
+<c>* A dict that will be used/adapted by other example procedures.</c>
+<l>create_dict (ExampleInternals)</l>
+<l>set_dict_tuple (ExampleInternals, 'show_example_screens', ShowExampleScreens)</l>
+<l>set_dict_tuple (ExampleInternals, 'use_pretrained_model', UsePretrainedModel)</l>
+<l>if (not ShowExampleScreens)</l>
+<l>    return ()</l>
+<l>endif</l>
+<c>* </c>
+<l>dev_close_window ()</l>
+<l>dev_open_example_text_window (ExampleInternals)</l>
+<c>* </c>
+<l>set_dict_tuple (ExampleInternals, 'window_images_needed', false)</l>
+<l>set_dict_tuple (ExampleInternals, 'window_legend_needed', false)</l>
+<c>* </c>
+<l>return ()</l>
+</body>
+<docu id="dev_example_init">
+<parameters>
+<parameter id="ExampleInternals"/>
+<parameter id="ShowExampleScreens">
+<default_type>integer</default_type>
+<default_value>0</default_value>
+<description lang="en_US">A boolean that is used to enable/disable explanation screens in this example</description>
+<multivalue>false</multivalue>
+<sem_type>string</sem_type>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_max>1</value_max>
+<value_min>0</value_min>
+</parameter>
+<parameter id="UsePretrainedModel"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_display_screen_introduction">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure displays an overview on the different example parts.</c>
+<c>* </c>
+<l>get_dict_tuple (ExampleInternals, 'show_example_screens', ShowExampleScreens)</l>
+<l>if (not ShowExampleScreens)</l>
+<l>    return ()</l>
+<l>endif</l>
+<c>* </c>
+<c>* Reset the open windows for a clean display.</c>
+<l>set_dict_tuple (ExampleInternals, 'window_images_needed', false)</l>
+<l>set_dict_tuple (ExampleInternals, 'window_legend_needed', false)</l>
+<l>dev_display_example_reset_windows (ExampleInternals)</l>
+<c>* </c>
+<c>* Display explanatory text.</c>
+<l>get_dict_tuple (ExampleInternals, 'window_text', WindowHandleText)</l>
+<l>dev_set_window (WindowHandleText)</l>
+<c>* </c>
+<l>Text := 'This example is part of a series of examples, which summarize '</l>
+<l>Text[|Text|] := 'the workflow for DL object detection. It uses the MVTec pill bag dataset.'</l>
+<l>Text[|Text|] := ''</l>
+<l>Text[|Text|] := 'The four parts are: '</l>
+<l>Text[|Text|] := '1. Creation of the model and dataset preprocessing.'</l>
+<l>Text[|Text|] := '2. Training of the model.'</l>
+<l>Text[|Text|] := '3. Evaluation of the trained model.'</l>
+<l>Text[|Text|] := '4. Inference on new images.'</l>
+<l>Text[|Text|] := ''</l>
+<l>Text[|Text|] := 'This example covers part 4: \'Inference on new images\'.'</l>
+<c>* </c>
+<l>dev_disp_text (Text, 'window', 'top', 'left', 'black', 'box', 'true')</l>
+<l>dev_disp_text ('Press Run (F5) to continue', 'window', 'bottom', 'right', 'black', [], [])</l>
+<c>* </c>
+<l>return ()</l>
+</body>
+<docu id="dev_display_screen_introduction">
+<parameters>
+<parameter id="ExampleInternals"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_display_example_reset_windows">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure resets the graphics windows.</c>
+<c>* </c>
+<c>* Close any windows that are listed in key 'window_handles_to_close'.</c>
+<l>try</l>
+<l>    get_dict_tuple (ExampleInternals, 'window_handles_to_close', WindowHandlesToClose)</l>
+<l>catch (Exception)</l>
+<l>    WindowHandlesToClose := []</l>
+<l>endtry</l>
+<l>for I := 0 to |WindowHandlesToClose| - 1 by 1</l>
+<l>    dev_set_window (WindowHandlesToClose[I])</l>
+<l>    dev_close_window ()</l>
+<l>endfor</l>
+<l>set_dict_tuple (ExampleInternals, 'window_handles_to_close', [])</l>
+<c>* </c>
+<c>* Open image window if needed</c>
+<l>get_dict_param (ExampleInternals, 'keys', [], WindowHandleKeys)</l>
+<l>tuple_find (WindowHandleKeys, 'window_images', Index)</l>
+<l>get_dict_tuple (ExampleInternals, 'window_images_needed', WindowImagesNeeded)</l>
+<l>if (WindowImagesNeeded and Index == -1)</l>
+<c>    * Open new window for images</c>
+<l>    dev_open_example_image_window (ExampleInternals)</l>
+<l>elseif (not WindowImagesNeeded and Index != -1)</l>
+<c>    * Window for images exists but is not needed -&gt; close it</c>
+<l>    dev_close_example_image_window (ExampleInternals)</l>
+<l>endif</l>
+<c>* </c>
+<c>* Open legend window if needed</c>
+<l>get_dict_param (ExampleInternals, 'keys', [], WindowHandleKeys)</l>
+<l>tuple_find (WindowHandleKeys, 'window_legend', Index)</l>
+<l>get_dict_tuple (ExampleInternals, 'window_legend_needed', WindowLegendNeeded)</l>
+<l>if (WindowLegendNeeded and Index == -1)</l>
+<c>    * Open new window for legend</c>
+<l>    dev_open_example_legend_window (ExampleInternals, 280)</l>
+<l>elseif (not WindowLegendNeeded and Index != -1)</l>
+<c>    * Window for legend exists but is not needed -&gt; close it</c>
+<l>    dev_close_example_legend_window (ExampleInternals)</l>
+<l>endif</l>
+<c>* </c>
+<c>* Set the correct area (part) of the image window.</c>
+<l>try</l>
+<l>    get_dict_tuple (ExampleInternals, 'window_images', WindowHandleImages)</l>
+<l>    dev_set_window (WindowHandleImages)</l>
+<l>    dev_clear_window ()</l>
+<c>    * Set default window extends</c>
+<l>    dev_set_window_extents (360, 0, 800, 500)</l>
+<l>    dev_set_part (1, 1, -1, -1)</l>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<c>* </c>
+<c>* Set the correct area (part) of the legend window.</c>
+<l>try</l>
+<l>    get_dict_tuple (ExampleInternals, 'window_legend', WindowHandleLegend)</l>
+<l>    dev_set_window (WindowHandleLegend)</l>
+<l>    dev_clear_window ()</l>
+<l>    dev_set_part (1, 1, -1, -1)</l>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<l>get_dict_tuple (ExampleInternals, 'window_text', WindowHandleText)</l>
+<l>dev_set_window (WindowHandleText)</l>
+<l>dev_clear_window ()</l>
+<l>return ()</l>
+</body>
+<docu id="dev_display_example_reset_windows">
+<parameters>
+<parameter id="ExampleInternals">
+<default_type>integer</default_type>
+<mixed_type>false</mixed_type>
+<sem_type>dict</sem_type>
+<type_list>
+<item>integer</item>
+</type_list>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_open_example_legend_window">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+<par name="WindowWidth" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure initializes the graphic windows that are used to display a legend.</c>
+<c>* </c>
+<l>get_dict_tuple (ExampleInternals, 'window_images_height', WindowImagesHeight)</l>
+<l>get_dict_tuple (ExampleInternals, 'window_images_width', WindowImagesWidth)</l>
+<l>get_dict_tuple (ExampleInternals, 'window_images_x', WindowImagesX)</l>
+<l>get_dict_tuple (ExampleInternals, 'window_images_y', WindowImagesY)</l>
+<l>dev_open_window (WindowImagesY, WindowImagesX + WindowImagesWidth + 5, WindowWidth, WindowImagesHeight, 'black', WindowHandleLegend)</l>
+<l>set_display_font (WindowHandleLegend, 14, 'mono', 'true', 'false')</l>
+<l>set_dict_tuple (ExampleInternals, 'window_legend', WindowHandleLegend)</l>
+<l>return ()</l>
+</body>
+<docu id="dev_open_example_legend_window">
+<parameters>
+<parameter id="ExampleInternals"/>
+<parameter id="WindowWidth"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_open_example_image_window">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure initializes the graphic windows that are used to display example images.</c>
+<c>* </c>
+<l>WindowHeightText := 300</l>
+<l>WindowWidthImage := 800</l>
+<l>WindowHeightImages := 500</l>
+<l>WindowBGColor := 'gray'</l>
+<c>* </c>
+<l>WindowYImages := WindowHeightText + 60</l>
+<l>WindowXImages := 0</l>
+<l>dev_open_window (WindowYImages, WindowXImages, WindowWidthImage, WindowHeightImages, WindowBGColor, WindowHandleImages)</l>
+<l>set_display_font (WindowHandleImages, 16, 'mono', 'true', 'false')</l>
+<l>set_dict_tuple (ExampleInternals, 'window_images', WindowHandleImages)</l>
+<l>set_dict_tuple (ExampleInternals, 'window_images_width', WindowWidthImage)</l>
+<l>set_dict_tuple (ExampleInternals, 'window_images_height', WindowHeightImages)</l>
+<l>set_dict_tuple (ExampleInternals, 'window_images_x', WindowXImages)</l>
+<l>set_dict_tuple (ExampleInternals, 'window_images_y', WindowYImages)</l>
+<l>return ()</l>
+</body>
+<docu id="dev_open_example_image_window">
+<parameters>
+<parameter id="ExampleInternals"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_display_screen_example_images">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure displays an overview on the different example parts.</c>
+<c>* </c>
+<l>get_dict_tuple (ExampleInternals, 'show_example_screens', ShowExampleScreens)</l>
+<l>if (not ShowExampleScreens)</l>
+<l>    return ()</l>
+<l>endif</l>
+<l>get_dict_tuple (ExampleInternals, 'use_pretrained_model', UsePretrainedModel)</l>
+<l>if (UsePretrainedModel)</l>
+<c>    * Check if the pretrained model and preprocessing parameters are available.</c>
+<c>    * </c>
+<c>    * File name of dict containing parameters used for preprocessing.</c>
+<l>    PreprocessParamFileName := 'detect_pills_preprocess_param.hdict'</l>
+<l>    file_exists (PreprocessParamFileName, PreprocessParamExists)</l>
+<c>    * </c>
+<c>    * File name of dict containing parameters used for preprocessing.</c>
+<l>    RetrainedModelFileName := 'detect_pills.hdl'</l>
+<l>    file_exists (RetrainedModelFileName, ModelExists)</l>
+<l>else</l>
+<c>    * Check if the trained model and preprocessing parameters are available.</c>
+<c>    * </c>
+<c>    * Example data folder containing the outputs of the previous example series.</c>
+<l>    ExampleDataDir := 'detect_pills_data'</l>
+<c>    * </c>
+<c>    * File name of dict containing parameters used for preprocessing.</c>
+<l>    DataDirectory := ExampleDataDir + '/dldataset_pill_bag_512x320'</l>
+<l>    PreprocessParamFileName := DataDirectory + '/dl_preprocess_param.hdict'</l>
+<l>    file_exists (PreprocessParamFileName, PreprocessParamExists)</l>
+<c>    * </c>
+<c>    * File name of dict containing parameters used for preprocessing.</c>
+<l>    RetrainedModelFileName := ExampleDataDir + '/best_dl_model_detection.hdl'</l>
+<l>    file_exists (RetrainedModelFileName, ModelExists)</l>
+<l>endif</l>
+<c>* Reset the open windows for a clean display.</c>
+<l>WindowImageNeeded := PreprocessParamExists and ModelExists</l>
+<l>set_dict_tuple (ExampleInternals, 'window_images_needed', WindowImageNeeded)</l>
+<l>set_dict_tuple (ExampleInternals, 'window_legend_needed', false)</l>
+<l>dev_display_example_reset_windows (ExampleInternals)</l>
+<c>* </c>
+<c>* Display explanatory text.</c>
+<l>get_dict_tuple (ExampleInternals, 'window_text', WindowHandleText)</l>
+<l>dev_set_window (WindowHandleText)</l>
+<c>* </c>
+<l>if (not PreprocessParamExists or not ModelExists)</l>
+<l>    if (UsePretrainedModel)</l>
+<l>        Text := 'The pretrained model and corresponding preprocessing'</l>
+<l>        Text[|Text|] := 'parameters could not be found.'</l>
+<l>        Text[|Text|] := ''</l>
+<l>        Text[|Text|] := 'These files are part of a separate installer. Please'</l>
+<l>        Text[|Text|] := 'refer to the Installation Guide for more information on'</l>
+<l>        Text[|Text|] := 'this topic!'</l>
+<l>    else</l>
+<c>        * </c>
+<c>        * Part 1 and/or part 2 should be run before continuing this example.</c>
+<l>        Text := 'To run this example you need the output of:'</l>
+<l>        if (not PreprocessParamExists)</l>
+<l>            Text[|Text|] := '- \'detect_pills_deep_learning_1_prepare.hdev\''</l>
+<l>        endif</l>
+<l>        if (not ModelExists)</l>
+<l>            Text[|Text|] := '- \'detect_pills_deep_learning_2_train.hdev\''</l>
+<l>        endif</l>
+<l>        Text[|Text|] := ''</l>
+<l>        if (not PreprocessParamExists and not ModelExists)</l>
+<l>            Text[|Text|] := 'Please run these examples first.'</l>
+<l>        else</l>
+<l>            Text[|Text|] := 'Please run this example first.'</l>
+<l>        endif</l>
+<l>        Text[|Text|:|Text| + 2] := ['Alternatively, you can set \'UsePretrainedModel := true\' ', 'at the top of the example script to use an already trained', 'model shipped with the HALCON installation.']</l>
+<l>    endif</l>
+<c>    * </c>
+<l>    set_display_font (WindowHandleText, 20, 'mono', 'true', 'false')</l>
+<l>    dev_disp_text (Text, 'window', 'top', 'left', 'red', 'box', 'true')</l>
+<l>    set_display_font (WindowHandleText, 16, 'mono', 'true', 'false')</l>
+<l>else</l>
+<c>    * </c>
+<c>    * All parts have been run before, hence continue with the example text.</c>
+<l>    Text := 'We now have a trained DL object detection model.'</l>
+<l>    Text[|Text|] := 'We are ready to apply it to new images.'</l>
+<l>    Text[|Text|] := ''</l>
+<l>    Text[|Text|] := 'These images are not part of the preprocessed dataset.'</l>
+<l>    Text[|Text|] := ''</l>
+<l>    Text[|Text|] := 'The images have to be preprocessed in the same way as the DLDataset,'</l>
+<l>    Text[|Text|] := 'which was used for training (see example series part 1).'</l>
+<l>    Text[|Text|] := ''</l>
+<l>    Text[|Text|] := 'Below you see an example image.'</l>
+<c>    * </c>
+<l>    dev_disp_text (Text, 'window', 'top', 'left', 'black', 'box', 'true')</l>
+<l>    dev_disp_text ('Press Run (F5) to continue', 'window', 'bottom', 'right', 'black', [], [])</l>
+<c>    * </c>
+<c>    * Display an example image</c>
+<l>    ExampleImageFile := '/pill_bag/pill_bag_036.png'</l>
+<c>    * Add example image to ExampleInternals reuse it later</c>
+<l>    set_dict_tuple (ExampleInternals, 'example_image_file', ExampleImageFile)</l>
+<l>    read_image (Image, ExampleImageFile)</l>
+<l>    get_dict_tuple (ExampleInternals, 'window_images', WindowHandleImages)</l>
+<l>    dev_set_window (WindowHandleImages)</l>
+<l>    get_image_size (Image, Width, Height)</l>
+<l>    dev_set_part (0, 0, Height - 1, Width - 1)</l>
+<l>    dev_display (Image)</l>
+<l>endif</l>
+<c>* </c>
+<l>return ()</l>
+</body>
+<docu id="dev_display_screen_example_images">
+<parameters>
+<parameter id="ExampleInternals"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_display_screen_inference_step_1">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure displays the second explanatory part of the inference.</c>
+<c>* </c>
+<l>get_dict_tuple (ExampleInternals, 'show_example_screens', ShowExampleScreens)</l>
+<l>if (not ShowExampleScreens)</l>
+<l>    return ()</l>
+<l>endif</l>
+<c>* </c>
+<c>* Reset the open windows for a clean display.</c>
+<l>set_dict_tuple (ExampleInternals, 'window_images_needed', true)</l>
+<l>set_dict_tuple (ExampleInternals, 'window_legend_needed', false)</l>
+<l>dev_display_example_reset_windows (ExampleInternals)</l>
+<c>* </c>
+<c>* Display explanatory text.</c>
+<l>get_dict_tuple (ExampleInternals, 'window_text', WindowHandleText)</l>
+<l>dev_set_window (WindowHandleText)</l>
+<c>* </c>
+<l>Text := 'Inference steps for one image:'</l>
+<l>Text[|Text|] := ''</l>
+<l>Text[|Text|] := '1. Generate a DLSample for the image using'</l>
+<l>Text[|Text|] := '   \'gen_dl_samples_from_images\'.'</l>
+<c>* </c>
+<l>dev_disp_text (Text, 'window', 'top', 'left', 'black', 'box', 'true')</l>
+<l>dev_disp_text ('Press Run (F5) to continue', 'window', 'bottom', 'right', 'black', [], [])</l>
+<c>* </c>
+<c>* Display example images,</c>
+<l>get_dict_tuple (ExampleInternals, 'window_images', WindowHandleImages)</l>
+<l>dev_set_window (WindowHandleImages)</l>
+<l>set_window_param (WindowHandleImages, 'flush', 'false')</l>
+<c>* </c>
+<l>get_dict_tuple (ExampleInternals, 'example_image_file', ExampleImageFile)</l>
+<l>read_image (ImageRaw, ExampleImageFile)</l>
+<l>get_image_size (ImageRaw, Width, Height)</l>
+<l>dev_set_part (0, 0, Height - 1, Width - 1)</l>
+<l>dev_display (ImageRaw)</l>
+<l>dev_disp_text ('Raw image', 'window', 'top', 'left', 'black', [], [])</l>
+<c>* </c>
+<l>flush_buffer (WindowHandleImages)</l>
+<l>set_window_param (WindowHandleImages, 'flush', 'true')</l>
+<c>* </c>
+<l>return ()</l>
+</body>
+<docu id="dev_display_screen_inference_step_1">
+<parameters>
+<parameter id="ExampleInternals"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_display_screen_inference_step_2_part_2">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure displays the second explanatory part of the inference.</c>
+<c>* </c>
+<l>get_dict_tuple (ExampleInternals, 'show_example_screens', ShowExampleScreens)</l>
+<l>if (not ShowExampleScreens)</l>
+<l>    return ()</l>
+<l>endif</l>
+<c>* </c>
+<c>* Reset the open windows for a clean display.</c>
+<l>set_dict_tuple (ExampleInternals, 'window_images_needed', true)</l>
+<l>set_dict_tuple (ExampleInternals, 'window_legend_needed', false)</l>
+<l>dev_display_example_reset_windows (ExampleInternals)</l>
+<c>* </c>
+<c>* Display explanatory text.</c>
+<l>get_dict_tuple (ExampleInternals, 'window_text', WindowHandleText)</l>
+<l>dev_set_window (WindowHandleText)</l>
+<c>* </c>
+<l>Text := 'Inference steps for one image:'</l>
+<l>Text[|Text|] := ''</l>
+<l>Text[|Text|] := '1. Generate a DLSample for the image using'</l>
+<l>Text[|Text|] := '   \'gen_dl_samples_from_images\'.'</l>
+<l>Text[|Text|] := ''</l>
+<l>Text[|Text|] := '2. Preprocess the image to suit the trained model'</l>
+<l>Text[|Text|] := '   using \'preprocess_dl_samples\'.'</l>
+<c>* </c>
+<l>dev_disp_text (Text, 'window', 'top', 'left', 'black', 'box', 'true')</l>
+<l>dev_disp_text ('Press Run (F5) to continue', 'window', 'bottom', 'right', 'black', [], [])</l>
+<c>* </c>
+<c>* Display example images,</c>
+<l>get_dict_tuple (ExampleInternals, 'window_images', WindowHandleImages)</l>
+<l>dev_set_window (WindowHandleImages)</l>
+<l>set_window_param (WindowHandleImages, 'flush', 'false')</l>
+<c>* </c>
+<l>get_dict_tuple (ExampleInternals, 'example_image_file', ExampleImageFile)</l>
+<l>read_image (ImageRaw, ExampleImageFile)</l>
+<l>get_image_size (ImageRaw, RawWidth, RawHeight)</l>
+<l>zoom_image_size (ImageRaw, ImageZoomed, 512, 320, 'constant')</l>
+<l>get_image_size (ImageZoomed, Width, Height)</l>
+<l>ZoomFactor := Height / real(RawHeight)</l>
+<c>* </c>
+<c>* Create a loupe to see difference of resolution</c>
+<l>LoupeZoom := 7.0</l>
+<l>LoupeMargin := 30 * ZoomFactor</l>
+<l>LoupeWindowSize := 45 * ZoomFactor</l>
+<l>LoupeRow1 := 368 * ZoomFactor</l>
+<l>LoupeColumn1 := 577 * ZoomFactor</l>
+<l>dev_set_draw ('margin')</l>
+<l>dev_set_color ('light blue')</l>
+<l>dev_set_line_width (2)</l>
+<c>* Prepare images for loupe</c>
+<l>crop_rectangle1 (ImageZoomed, ImagePart, LoupeRow1, LoupeColumn1, LoupeRow1 + LoupeWindowSize - 1, LoupeColumn1 + LoupeWindowSize - 1)</l>
+<l>zoom_image_factor (ImagePart, ImagePart2, LoupeZoom, LoupeZoom, 'nearest_neighbor')</l>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<l>hom_mat2d_translate (HomMat2DIdentity, Height - LoupeZoom * LoupeWindowSize - LoupeMargin, LoupeMargin, HomMat2DTranslate)</l>
+<l>affine_trans_image (ImagePart2, ImageTrans, HomMat2DTranslate, 'constant', 'true')</l>
+<c>* Draw loupe rectangles</c>
+<l>gen_rectangle1 (Loupe1, LoupeRow1, LoupeColumn1, LoupeRow1 + LoupeWindowSize, LoupeColumn1 + LoupeWindowSize)</l>
+<l>gen_rectangle1 (Loupe2, Height - LoupeZoom * LoupeWindowSize - LoupeMargin, LoupeMargin, Height - LoupeMargin - 5, LoupeZoom * LoupeWindowSize + LoupeMargin - 5)</l>
+<c>* Draw loupe lines</c>
+<l>set_window_param (WindowHandleImages, 'flush', 'false')</l>
+<l>gen_region_line (LoupeLine1, Height - LoupeZoom * LoupeWindowSize - LoupeMargin, LoupeMargin, LoupeRow1, LoupeColumn1)</l>
+<l>gen_region_line (LoupeLine2, Height - LoupeMargin - 5, LoupeZoom * LoupeWindowSize + LoupeMargin - 5, LoupeRow1 + LoupeWindowSize, LoupeColumn1 + LoupeWindowSize)</l>
+<c>* </c>
+<l>get_image_size (ImageZoomed, Width, Height)</l>
+<l>dev_set_part (0, 0, Height - 1, Width - 1)</l>
+<l>dev_display (ImageZoomed)</l>
+<l>set_window_param (WindowHandleImages, 'flush', 'false')</l>
+<l>dev_display (ImageTrans)</l>
+<l>dev_display (Loupe1)</l>
+<l>dev_display (Loupe2)</l>
+<l>dev_display (LoupeLine1)</l>
+<l>dev_display (LoupeLine2)</l>
+<l>dev_disp_text ('Preprocessed image for image size 512 x 320', 'window', 'top', 'left', 'black', [], [])</l>
+<c>* </c>
+<l>get_string_extents (WindowHandleImages, 'test_string', _, _, _, TextHeight)</l>
+<l>dev_disp_text ('Reduced resolution', 'image', Height - LoupeZoom * LoupeWindowSize - LoupeMargin - 3 * TextHeight * ZoomFactor, LoupeMargin, 'black', [], [])</l>
+<c>* </c>
+<l>flush_buffer (WindowHandleImages)</l>
+<l>set_window_param (WindowHandleImages, 'flush', 'true')</l>
+<c>* </c>
+<l>return ()</l>
+</body>
+<docu id="dev_display_screen_inference_step_2_part_2">
+<parameters>
+<parameter id="ExampleInternals"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_display_screen_inference_step_3">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure displays the third explanatory part of the inference.</c>
+<c>* </c>
+<l>get_dict_tuple (ExampleInternals, 'show_example_screens', ShowExampleScreens)</l>
+<l>if (not ShowExampleScreens)</l>
+<l>    return ()</l>
+<l>endif</l>
+<c>* </c>
+<c>* Reset the open windows for a clean display.</c>
+<l>set_dict_tuple (ExampleInternals, 'window_images_needed', true)</l>
+<l>set_dict_tuple (ExampleInternals, 'window_legend_needed', true)</l>
+<l>dev_display_example_reset_windows (ExampleInternals)</l>
+<c>* </c>
+<c>* Display explanatory text.</c>
+<l>get_dict_tuple (ExampleInternals, 'window_text', WindowHandleText)</l>
+<l>dev_set_window (WindowHandleText)</l>
+<c>* </c>
+<l>Text := 'Inference steps for one image:'</l>
+<l>Text[|Text|] := ''</l>
+<l>Text[|Text|] := '1. Generate a DLSample for the image using'</l>
+<l>Text[|Text|] := '   \'gen_dl_samples_from_images\'.'</l>
+<l>Text[|Text|] := ''</l>
+<l>Text[|Text|] := '2. Preprocess the image to fit the trained model'</l>
+<l>Text[|Text|] := '   using \'preprocess_dl_samples\'.'</l>
+<l>Text[|Text|] := ''</l>
+<l>Text[|Text|] := '3. Apply the model using \'apply_dl_model\'.'</l>
+<c>* </c>
+<l>dev_disp_text (Text, 'window', 'top', 'left', 'black', 'box', 'true')</l>
+<l>dev_disp_text ('Press Run (F5) to continue', 'window', 'bottom', 'right', 'black', [], [])</l>
+<c>* </c>
+<c>* Display example images,</c>
+<l>get_dict_tuple (ExampleInternals, 'window_images', WindowHandleImages)</l>
+<l>dev_set_window (WindowHandleImages)</l>
+<c>* </c>
+<c>* Read a tiny dataset with a single sample from the pill bag dataset.</c>
+<l>create_tiny_example_dataset_with_result (DLDataset, DLResult)</l>
+<c>* </c>
+<c>* Display a temporary legend.</c>
+<l>get_dict_tuple (ExampleInternals, 'window_legend', WindowHandleLegend)</l>
+<l>dev_set_window (WindowHandleLegend)</l>
+<c>* </c>
+<l>create_dict (WindowHandleDict)</l>
+<l>get_dict_param (ExampleInternals, 'keys', [], GenParamValue)</l>
+<l>get_dict_tuple (ExampleInternals, 'window_images', WindowHandleImages)</l>
+<l>dev_set_window (WindowHandleImages)</l>
+<c>* To display the Text at the bottom of the image such that the image is undistorted,</c>
+<c>* change size of windows.</c>
+<l>get_dict_tuple (ExampleInternals, 'window_images_x', WindowImageColumn1)</l>
+<l>get_dict_tuple (ExampleInternals, 'window_images_y', WindowImageRow1)</l>
+<l>get_dict_tuple (ExampleInternals, 'window_images_width', WindowImageWidth)</l>
+<l>get_dict_tuple (ExampleInternals, 'window_images_height', WindowImageHeight)</l>
+<l>WindowImageHeight := WindowImageHeight + 39.88</l>
+<l>dev_set_window_extents (WindowImageRow1, WindowImageColumn1, WindowImageWidth, WindowImageHeight)</l>
+<c>* Same for legend window</c>
+<l>get_window_extents (WindowHandleLegend, Row, Column, Width, Height)</l>
+<l>dev_set_window (WindowHandleLegend)</l>
+<l>dev_set_window_extents (WindowImageRow1, WindowImageColumn1 + WindowImageWidth + 5, 290, WindowImageHeight)</l>
+<l>dev_set_window (WindowHandleImages)</l>
+<c>* </c>
+<l>set_dict_tuple (WindowHandleDict, 'bbox_result', [WindowHandleImages,WindowHandleLegend])</l>
+<c>* </c>
+<c>* Display the sample contained in tiny dataset.</c>
+<l>gen_dl_samples (DLDataset, 0, 'detection', [], DLSample)</l>
+<l>dev_display_dl_data (DLSample, DLResult, DLDataset, 'bbox_result', [], WindowHandleDict)</l>
+<c>* </c>
+<l>dev_set_window (WindowHandleImages)</l>
+<l>dev_disp_text ('Output of \'apply_dl_model\'', 'window', 'top', 'left', 'black', [], [])</l>
+<l>dev_set_window (WindowHandleText)</l>
+<l>dev_set_window (WindowHandleLegend)</l>
+<l>dev_disp_text ('Press Run (F5) to continue', 'window', 'bottom', 'right', 'black', [], [])</l>
+<c>* </c>
+<l>return ()</l>
+</body>
+<docu id="dev_display_screen_inference_step_3">
+<parameters>
+<parameter id="ExampleInternals"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="create_tiny_example_dataset_with_result">
+<interface>
+<oc>
+<par name="DLDataset" base_type="ctrl" dimension="0"/>
+<par name="DLResult" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<c>* This procedure creates a tiny dataset out of the pill bag dataset.</c>
+<c>* </c>
+<l>get_system ('example_dir', ExampleDir)</l>
+<c>* Create DLDataset</c>
+<l>create_dict (DLDataset)</l>
+<l>set_dict_tuple (DLDataset, 'image_dir', ExampleDir + '/images')</l>
+<l>set_dict_tuple (DLDataset, 'class_ids', [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])</l>
+<l>set_dict_tuple (DLDataset, 'class_names', ['Omega-3', 'KMW', 'Stomach tablet', 'Ginko', 'Ginseng', 'Glucosamine', 'Cognivia', 'Capsularum I', 'Iron tablet', 'Vitamin-B'])</l>
+<c>* Create Samples</c>
+<l>DLSamples := []</l>
+<l>create_dict (DLSample)</l>
+<l>set_dict_tuple (DLSample, 'image_id', 36)</l>
+<l>set_dict_tuple (DLSample, 'image_file_name', 'pill_bag/pill_bag_036.png')</l>
+<l>set_dict_tuple (DLSample, 'bbox_row1', [177, 242, 247, 240, 453, 127, 465, 372])</l>
+<l>set_dict_tuple (DLSample, 'bbox_col1', [692, 362, 455, 894, 436, 915, 826, 535])</l>
+<l>set_dict_tuple (DLSample, 'bbox_row2', [287, 376, 458, 322, 554, 244, 561, 456])</l>
+<l>set_dict_tuple (DLSample, 'bbox_col2', [933, 493, 580, 978, 672, 1033, 1037, 618])</l>
+<l>set_dict_tuple (DLSample, 'bbox_label_id', [1, 3, 4, 5, 6, 7, 8, 9])</l>
+<l>DLSamples := [DLSamples,DLSample]</l>
+<c>* </c>
+<l>set_dict_tuple (DLDataset, 'samples', DLSamples)</l>
+<c>* </c>
+<c>* Create a results</c>
+<l>create_dict (DLResult)</l>
+<l>set_dict_tuple (DLResult, 'bbox_row1', [177, 242, 247, 240, 453, 127, 465, 372])</l>
+<l>set_dict_tuple (DLResult, 'bbox_col1', [692, 362, 455, 894, 436, 915, 826, 535])</l>
+<l>set_dict_tuple (DLResult, 'bbox_row2', [287, 376, 458, 322, 554, 244, 561, 456])</l>
+<l>set_dict_tuple (DLResult, 'bbox_col2', [933, 493, 580, 978, 672, 1033, 1037, 618])</l>
+<l>set_dict_tuple (DLResult, 'bbox_class_id', [1, 3, 4, 5, 6, 7, 8, 9])</l>
+<l>set_dict_tuple (DLResult, 'bbox_confidence', [0.99871, 1.0, 1.0, 0.97492, 0.96392, 1.0, 1.0, 0.99123])</l>
+<c>* </c>
+<l>return ()</l>
+</body>
+<docu id="create_tiny_example_dataset_with_result">
+<parameters>
+<parameter id="DLDataset"/>
+<parameter id="DLResult"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_display_screen_run_program">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure shows a final text before running the program.</c>
+<c>* </c>
+<l>get_dict_tuple (ExampleInternals, 'show_example_screens', ShowExampleScreens)</l>
+<l>if (not ShowExampleScreens)</l>
+<l>    return ()</l>
+<l>endif</l>
+<c>* </c>
+<c>* Reset the open windows for a clean display.</c>
+<l>set_dict_tuple (ExampleInternals, 'window_images_needed', false)</l>
+<l>set_dict_tuple (ExampleInternals, 'window_legend_needed', false)</l>
+<l>dev_display_example_reset_windows (ExampleInternals)</l>
+<c>* </c>
+<c>* Display explanatory text.</c>
+<l>get_dict_tuple (ExampleInternals, 'window_text', WindowHandleText)</l>
+<l>dev_set_window (WindowHandleText)</l>
+<c>* </c>
+<l>Text := 'We will now apply the trained model from example part 2'</l>
+<l>Text[|Text|] := '\'detect_pills_deep_learning_2_train.hdev\''</l>
+<l>Text[|Text|] := 'to some new images using \'apply_dl_model\'.'</l>
+<l>Text[|Text|] := ''</l>
+<l>Text[|Text|] := 'In the consequent example application, it is checked'</l>
+<l>Text[|Text|] := 'if the bags have been filled up correctly, which means:'</l>
+<l>Text[|Text|] := '- The bag contains all pill types.'</l>
+<l>Text[|Text|] := '- There are no duplicates in the bag.'</l>
+<c>* </c>
+<l>dev_disp_text (Text, 'window', 'top', 'left', 'black', 'box', 'true')</l>
+<l>dev_disp_text ('Press Run (F5) to continue', 'window', 'bottom', 'right', 'black', [], [])</l>
+<c>* </c>
+<l>return ()</l>
+</body>
+<docu id="dev_display_screen_run_program">
+<parameters>
+<parameter id="ExampleInternals"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_display_screen_final">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure shows the final message of the example series.</c>
+<c>* </c>
+<l>get_dict_tuple (ExampleInternals, 'show_example_screens', ShowExampleScreens)</l>
+<l>if (not ShowExampleScreens)</l>
+<l>    return ()</l>
+<l>endif</l>
+<c>* </c>
+<l>dev_open_example_text_window (ExampleInternals)</l>
+<c>* </c>
+<c>* Reset the open windows for a clean display.</c>
+<l>set_dict_tuple (ExampleInternals, 'window_images_needed', false)</l>
+<l>set_dict_tuple (ExampleInternals, 'window_legend_needed', false)</l>
+<l>dev_display_example_reset_windows (ExampleInternals)</l>
+<c>* </c>
+<l>get_dict_tuple (ExampleInternals, 'window_text', WindowHandleText)</l>
+<l>dev_set_window (WindowHandleText)</l>
+<c>* </c>
+<c>* Display instruction text.</c>
+<l>Text := 'Congratulations!'</l>
+<l>Text[|Text|] := 'You have finished the series of examples for DL object detection.'</l>
+<l>Text[|Text|] := ''</l>
+<l>Text[|Text|] := 'You can now train a DL object detection model on your own data.'</l>
+<l>Text[|Text|] := ''</l>
+<c>* </c>
+<l>dev_disp_text (Text, 'window', 'top', 'left', 'black', 'box', 'true')</l>
+<l>dev_disp_text ('End of program.', 'window', 'bottom', 'right', 'black', 'box', 'true')</l>
+<c>* </c>
+<l>return ()</l>
+</body>
+<docu id="dev_display_screen_final">
+<parameters>
+<parameter id="ExampleInternals"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="get_example_inference_images">
+<interface>
+<ic>
+<par name="ImageDir" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="ImageFiles" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<c>* This procedure creates a list of images used for this example.</c>
+<c>* </c>
+<l>NumSamples := 10</l>
+<l>tuple_gen_const (NumSamples, '', ImageFiles)</l>
+<c>* </c>
+<c>* bags containing all pills.</c>
+<l>ImageFilesIndices := [152, 41, 164, 49]</l>
+<c>* bags containing only duplicates.</c>
+<l>ImageFilesIndices := [ImageFilesIndices,121, 59]</l>
+<c>* bags containing only missing pills.</c>
+<l>ImageFilesIndices := [ImageFilesIndices,178, 18]</l>
+<c>* bags containing both, duplicates and missing pills</c>
+<l>ImageFilesIndices := [ImageFilesIndices,146, 294]</l>
+<c>* </c>
+<l>for Index := 0 to NumSamples - 1 by 1</l>
+<l>    ImageFiles[Index] := ImageDir + '/pill_bag_' + ImageFilesIndices[Index]$'03' + '.png'</l>
+<l>endfor</l>
+<c>* </c>
+<l>tuple_shuffle (ImageFiles, ImageFiles)</l>
+<c>* </c>
+<l>return ()</l>
+</body>
+<docu id="get_example_inference_images">
+<parameters>
+<parameter id="ImageDir"/>
+<parameter id="ImageFiles"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_open_example_text_window">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<l>WindowWidthText := 800</l>
+<l>WindowHeightText := 300</l>
+<l>WindowBGColor := 'gray'</l>
+<l>dev_open_window (0, 0, WindowWidthText, WindowHeightText, WindowBGColor, WindowHandleText)</l>
+<l>set_display_font (WindowHandleText, 16, 'mono', 'true', 'false')</l>
+<l>set_dict_tuple (ExampleInternals, 'window_text', WindowHandleText)</l>
+<l>set_dict_tuple (ExampleInternals, 'window_text_width', WindowWidthText)</l>
+<l>set_dict_tuple (ExampleInternals, 'window_text_height', WindowHeightText)</l>
+<l>return ()</l>
+</body>
+<docu id="dev_open_example_text_window">
+<parameters>
+<parameter id="ExampleInternals"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_close_example_windows">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure closes all example windows.</c>
+<c>* </c>
+<l>get_dict_tuple (ExampleInternals, 'show_example_screens', ShowExampleScreens)</l>
+<l>if (not ShowExampleScreens)</l>
+<l>    return ()</l>
+<l>endif</l>
+<c>* </c>
+<l>dev_close_example_text_window (ExampleInternals)</l>
+<l>dev_close_example_image_window (ExampleInternals)</l>
+<l>dev_close_example_legend_window (ExampleInternals)</l>
+<c>* </c>
+<l>return ()</l>
+</body>
+<docu id="dev_close_example_windows">
+<parameters>
+<parameter id="ExampleInternals"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_close_example_image_window">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure closes the image window.</c>
+<c>* </c>
+<l>try</l>
+<l>    get_dict_tuple (ExampleInternals, 'window_images', WindowHandleImages)</l>
+<l>    dev_set_window (WindowHandleImages)</l>
+<l>    dev_close_window ()</l>
+<c>    * Delete key.</c>
+<l>    remove_dict_key (ExampleInternals, 'window_images')</l>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<c>* </c>
+<l>return ()</l>
+</body>
+<docu id="dev_close_example_image_window">
+<parameters>
+<parameter id="ExampleInternals"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_close_example_legend_window">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure closes the legend window.</c>
+<c>* </c>
+<l>try</l>
+<l>    get_dict_tuple (ExampleInternals, 'window_legend', WindowHandleLegend)</l>
+<l>    dev_set_window (WindowHandleLegend)</l>
+<l>    dev_close_window ()</l>
+<c>    * Delete key.</c>
+<l>    remove_dict_key (ExampleInternals, 'window_legend')</l>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<c>* </c>
+<l>return ()</l>
+</body>
+<docu id="dev_close_example_legend_window">
+<parameters>
+<parameter id="ExampleInternals"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_close_example_text_window">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure closes the text window.</c>
+<c>* </c>
+<l>try</l>
+<l>    get_dict_tuple (ExampleInternals, 'window_text', WindowHandleImages)</l>
+<l>    dev_set_window (WindowHandleImages)</l>
+<l>    dev_close_window ()</l>
+<c>    * Delete key.</c>
+<l>    remove_dict_key (ExampleInternals, 'window_text')</l>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<l>return ()</l>
+</body>
+<docu id="dev_close_example_text_window">
+<parameters>
+<parameter id="ExampleInternals"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="check_data_availability">
+<interface>
+<ic>
+<par name="ExampleDataDir" base_type="ctrl" dimension="0"/>
+<par name="PreprocessParamFileName" base_type="ctrl" dimension="0"/>
+<par name="TrainedModelFileName" base_type="ctrl" dimension="0"/>
+<par name="UsePretrainedModel" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure checks if all necessary files are available.</c>
+<c>* </c>
+<l>file_exists (ExampleDataDir, FileExists)</l>
+<l>if (not FileExists)</l>
+<l>    throw (ExampleDataDir + ' does not exist. Please run part 1 and 2 of example series.')</l>
+<l>endif</l>
+<c></c>
+<l>file_exists (PreprocessParamFileName, FileExists)</l>
+<l>if (not FileExists)</l>
+<l>    throw (PreprocessParamFileName + ' does not exist. Please run part 1 of example series.')</l>
+<l>endif</l>
+<c>* </c>
+<l>file_exists (TrainedModelFileName, FileExists)</l>
+<l>if (not FileExists)</l>
+<l>    if (UsePretrainedModel)</l>
+<l>        throw (TrainedModelFileName + ' does not exist. Please run the HALCON Deep Learning installer.')</l>
+<l>    else</l>
+<l>        throw (TrainedModelFileName + ' does not exist. Please run part 2 of example series.')</l>
+<l>    endif</l>
+<l>endif</l>
+<c>* </c>
+<l>return ()</l>
+</body>
+<docu id="check_data_availability">
+<parameters>
+<parameter id="ExampleDataDir"/>
+<parameter id="PreprocessParamFileName"/>
+<parameter id="TrainedModelFileName"/>
+<parameter id="UsePretrainedModel"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_display_screen_min_confidence">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure explains the parameter 'min_confidence'.</c>
+<c>* </c>
+<l>get_dict_tuple (ExampleInternals, 'show_example_screens', ShowExampleScreens)</l>
+<l>if (not ShowExampleScreens)</l>
+<l>    return ()</l>
+<l>endif</l>
+<c>* </c>
+<c>* Reset the open windows for a clean display.</c>
+<l>set_dict_tuple (ExampleInternals, 'window_images_needed', true)</l>
+<l>set_dict_tuple (ExampleInternals, 'window_legend_needed', false)</l>
+<l>dev_display_example_reset_windows (ExampleInternals)</l>
+<c>* </c>
+<c>* Display explanatory text.</c>
+<l>get_dict_tuple (ExampleInternals, 'window_text', WindowHandleText)</l>
+<l>dev_set_window (WindowHandleText)</l>
+<c>* </c>
+<l>Text := 'Output optimization:'</l>
+<l>dev_disp_text (Text, 'window', 'top', 'left', 'black', 'box', 'true')</l>
+<l>Text[|Text|] := ''</l>
+<l>Text[|Text|] := 'The output of \'apply_dl_model\' can be optimized with'</l>
+<l>Text[|Text|] := 'some parameters that can be set with \'set_dl_model_param\'.'</l>
+<l>Text[|Text|] := ''</l>
+<l>Text[|Text|] := 'To suppress result bounding boxes with a low confidence, use'</l>
+<l>Text[|Text|] := 'the parameter \'min_confidence\'.'</l>
+<c>* </c>
+<l>dev_disp_text (Text, 'window', 'top', 'left', 'black', 'box', 'true')</l>
+<l>dev_disp_text ('Press Run (F5) to continue', 'window', 'bottom', 'right', 'black', [], [])</l>
+<c>* </c>
+<c>* Display example image.</c>
+<l>get_dict_tuple (ExampleInternals, 'window_images', WindowHandleImages)</l>
+<l>dev_set_window (WindowHandleImages)</l>
+<l>set_window_param (WindowHandleImages, 'flush', 'false')</l>
+<c>* </c>
+<c>* Create example image.</c>
+<l>read_image (Image, 'pill_bag/pill_bag_207.png')</l>
+<l>get_image_size (Image, ImageWidth, ImageHeight)</l>
+<l>ImageZoomWidth := 512</l>
+<l>ZoomedImageToImage := ImageZoomWidth / (1.0 * ImageWidth)</l>
+<l>ImageZoomHeight := round(ImageHeight * ZoomedImageToImage)</l>
+<l>zoom_image_size (Image, ImageZoomed, ImageZoomWidth, ImageZoomHeight, 'constant')</l>
+<c>* </c>
+<l>ImageRatio := real(ImageWidth) / real(ImageHeight)</l>
+<l>Ratio := ImageWidth / (1.0 * ImageHeight)</l>
+<l>CropHeight := 140</l>
+<l>CropWidth := Ratio * CropHeight</l>
+<l>Row1 := 17</l>
+<l>Col1 := 335</l>
+<l>Row2 := Row1 + CropHeight</l>
+<l>Col2 := Col1 + CropWidth * 0.5</l>
+<l>crop_rectangle1 (ImageZoomed, ImagePart, Row1, Col1, Row2, Col2)</l>
+<c>* </c>
+<l>concat_obj (ImagePart, ImagePart, ObjectsConcat)</l>
+<l>tile_images (ObjectsConcat, TiledImage, 2, 'vertical')</l>
+<l>get_image_size (TiledImage, Width, Height)</l>
+<l>dev_set_part (0, 0, Height - 1, Width - 1)</l>
+<l>dev_display (TiledImage)</l>
+<c>* </c>
+<c>* Make line.</c>
+<l>dev_set_color ('gray')</l>
+<l>dev_set_draw ('fill')</l>
+<l>gen_rectangle1 (Line, 0, Width / 2, Height, Width / 2 + 1)</l>
+<c>* </c>
+<c>* Create result boxes.</c>
+<l>get_distinct_colors (10, false, 0, 200, ColorsRainbow)</l>
+<l>tuple_inverse (ColorsRainbow, ColorsRainbow)</l>
+<l>make_neighboring_colors_distinguishable (ColorsRainbow, Colors)</l>
+<l>ColorGinko := Colors[3]</l>
+<l>ColorCapsularumI := Colors[7]</l>
+<c>* Result boxes.</c>
+<l>gen_rectangle1 (BoxGinko, 30.1, 4.7, 66.2, 91.7)</l>
+<l>gen_rectangle1 (BoxCapsularumI, 56.0, 37.0, 119.8, 110.9)</l>
+<l>gen_rectangle1 (BoxGinko2, 30.1, 4.7 + Width / 2, 66.2, 91.7 + Width / 2)</l>
+<l>gen_rectangle1 (BoxCapsularumI2, 56.0, 37.0 + Width / 2, 119.8, 110.9 + Width / 2)</l>
+<c>* </c>
+<c>* Generate bad box</c>
+<l>gen_rectangle1 (BadBox, 40, 49, 92, 105)</l>
+<c>* </c>
+<c>* Draw result box.</c>
+<l>dev_display (TiledImage)</l>
+<l>dev_display (Line)</l>
+<l>LineWidth := 2.0</l>
+<l>set_window_param (WindowHandleImages, 'flush', 'false')</l>
+<l>display_result_box (BoxGinko, LineWidth, ColorGinko, '4 (1.00)')</l>
+<l>display_result_box (BoxCapsularumI, LineWidth, ColorCapsularumI, '8 (0.97)')</l>
+<l>display_result_box (BoxGinko2, LineWidth, ColorGinko, '4 (1.00)')</l>
+<l>display_result_box (BoxCapsularumI2, LineWidth, ColorCapsularumI, '8 (0.97)')</l>
+<l>display_result_box (BadBox, LineWidth, ColorGinko, '4 (0.55)')</l>
+<c>* </c>
+<c>* Add text for image parts</c>
+<l>get_window_extents (WindowHandleImages, Row, Column, WindowWidth, WindowHeight)</l>
+<l>Text := 'min_confidence = 0.5 (default)'</l>
+<l>get_string_extents (WindowHandleImages, Text, _, _, TextWidth, TextHeight)</l>
+<l>TextCol := WindowWidth * 0.25 - TextWidth * 0.5</l>
+<l>dev_disp_text (Text, 'window', WindowHeight - 2 * TextHeight, TextCol, 'black', [], [])</l>
+<l>Text := 'min_confidence = 0.6'</l>
+<l>get_string_extents (WindowHandleImages, Text, _, _, TextWidth, TextHeight)</l>
+<l>TextCol := WindowWidth * 0.75 - TextWidth * 0.5</l>
+<l>dev_disp_text (Text, 'window', WindowHeight - 2 * TextHeight, TextCol, 'black', [], [])</l>
+<c>* </c>
+<c>* Display.</c>
+<l>dev_set_part (0, 0, Height - 1, Width - 1)</l>
+<l>flush_buffer (WindowHandleImages)</l>
+<l>set_window_param (WindowHandleImages, 'flush', 'true')</l>
+<c>* </c>
+<l>return ()</l>
+</body>
+<docu id="dev_display_screen_min_confidence">
+<parameters>
+<parameter id="ExampleInternals"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="display_result_box">
+<interface>
+<io>
+<par name="Box" base_type="iconic" dimension="0"/>
+</io>
+<ic>
+<par name="LineWidth" base_type="ctrl" dimension="0"/>
+<par name="Colors" base_type="ctrl" dimension="0"/>
+<par name="Text" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This helper procedure displays result bounding boxes.</c>
+<c>* </c>
+<c>* Draw result box.</c>
+<l>dev_set_draw ('margin')</l>
+<l>dev_set_line_width (int(LineWidth + 2))</l>
+<l>dev_set_color ('black')</l>
+<l>dev_display (Box)</l>
+<l>dev_set_line_width (int(LineWidth))</l>
+<l>dev_set_color (Colors)</l>
+<l>dev_display (Box)</l>
+<c>* Display text.</c>
+<l>smallest_rectangle1 (Box, Row1, Column1, Row2, Column2)</l>
+<l>dev_disp_text (Text, 'image', Row1, Column1, 'white', ['box_color', 'shadow', 'border_radius'], ['black', 'false', 0])</l>
+<l>return ()</l>
+</body>
+<docu id="display_result_box">
+<parameters>
+<parameter id="Box"/>
+<parameter id="Colors"/>
+<parameter id="LineWidth"/>
+<parameter id="Text"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_display_screen_max_overlap">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure explains the parameter 'max_overlap'.</c>
+<c>* </c>
+<l>get_dict_tuple (ExampleInternals, 'show_example_screens', ShowExampleScreens)</l>
+<l>if (not ShowExampleScreens)</l>
+<l>    return ()</l>
+<l>endif</l>
+<c>* </c>
+<c>* Reset the open windows for a clean display.</c>
+<l>set_dict_tuple (ExampleInternals, 'window_images_needed', true)</l>
+<l>set_dict_tuple (ExampleInternals, 'window_legend_needed', false)</l>
+<l>dev_display_example_reset_windows (ExampleInternals)</l>
+<c>* </c>
+<c>* Display explanatory text.</c>
+<l>get_dict_tuple (ExampleInternals, 'window_text', WindowHandleText)</l>
+<l>dev_set_window (WindowHandleText)</l>
+<c>* </c>
+<l>Text := 'Output optimization:'</l>
+<l>dev_disp_text (Text, 'window', 'top', 'left', 'black', 'box', 'true')</l>
+<l>Text[|Text|] := ''</l>
+<l>Text[|Text|] := 'Sometimes, the network finds more overlapping bounding'</l>
+<l>Text[|Text|] := 'boxes predicting the same class for the same object.'</l>
+<l>Text[|Text|] := ''</l>
+<l>Text[|Text|] := 'To remove boxes that overlap with the best predicted'</l>
+<l>Text[|Text|] := 'box by a certain intersection over union (IoU), use'</l>
+<l>Text[|Text|] := 'the parameter \'max_overlap\'.'</l>
+<c>* </c>
+<l>dev_disp_text (Text, 'window', 'top', 'left', 'black', 'box', 'true')</l>
+<l>dev_disp_text ('Press Run (F5) to continue', 'window', 'bottom', 'right', 'black', [], [])</l>
+<c>* </c>
+<c>* Display example image.</c>
+<l>get_dict_tuple (ExampleInternals, 'window_images', WindowHandleImages)</l>
+<l>dev_set_window (WindowHandleImages)</l>
+<l>set_window_param (WindowHandleImages, 'flush', 'false')</l>
+<c>* </c>
+<c>* Create example image.</c>
+<l>read_image (Image, 'pill_bag/pill_bag_207.png')</l>
+<l>get_image_size (Image, ImageWidth, ImageHeight)</l>
+<l>ImageZoomWidth := 512</l>
+<l>ZoomedImageToImage := ImageZoomWidth / (1.0 * ImageWidth)</l>
+<l>ImageZoomHeight := round(ImageHeight * ZoomedImageToImage)</l>
+<l>zoom_image_size (Image, ImageZoomed, ImageZoomWidth, ImageZoomHeight, 'constant')</l>
+<c>* </c>
+<l>ImageRatio := real(ImageWidth) / real(ImageHeight)</l>
+<l>Ratio := ImageWidth / (1.0 * ImageHeight)</l>
+<l>CropHeight := 140</l>
+<l>CropWidth := Ratio * CropHeight</l>
+<l>Row1 := 17</l>
+<l>Col1 := 335</l>
+<l>Row2 := Row1 + CropHeight</l>
+<l>Col2 := Col1 + CropWidth * 0.5</l>
+<l>crop_rectangle1 (ImageZoomed, ImagePart, Row1, Col1, Row2, Col2)</l>
+<c>* </c>
+<l>concat_obj (ImagePart, ImagePart, ObjectsConcat)</l>
+<l>tile_images (ObjectsConcat, TiledImage, 2, 'vertical')</l>
+<l>get_image_size (TiledImage, Width, Height)</l>
+<l>dev_set_part (0, 0, Height - 1, Width - 1)</l>
+<l>dev_display (TiledImage)</l>
+<c>* </c>
+<c>* Make line.</c>
+<l>dev_set_color ('gray')</l>
+<l>dev_set_draw ('fill')</l>
+<l>gen_rectangle1 (Line, 0, Width / 2, Height, Width / 2 + 1)</l>
+<c>* </c>
+<c>* Create result boxes.</c>
+<l>get_distinct_colors (10, false, 0, 200, ColorsRainbow)</l>
+<l>tuple_inverse (ColorsRainbow, ColorsRainbow)</l>
+<l>make_neighboring_colors_distinguishable (ColorsRainbow, Colors)</l>
+<l>ColorGinko := Colors[3]</l>
+<l>ColorCapsularumI := Colors[7]</l>
+<c>* Result boxes.</c>
+<l>gen_rectangle1 (BoxGinko, 30.1, 4.7, 66.2, 91.7)</l>
+<l>gen_rectangle1 (BoxCapsularumI, 56.0, 37.0, 119.8, 110.9)</l>
+<l>gen_rectangle1 (BoxGinko2, 30.1, 4.7 + Width / 2, 66.2, 91.7 + Width / 2)</l>
+<l>gen_rectangle1 (BoxCapsularumI2, 56.0, 37.0 + Width / 2, 119.8, 110.9 + Width / 2)</l>
+<c>* </c>
+<c>* Generate bad box</c>
+<l>gen_rectangle1 (BadBox1, 68, 26, 101, 102)</l>
+<l>gen_rectangle1 (BadBox2, 49, 63, 119, 95)</l>
+<c>* </c>
+<c>* Draw result box.</c>
+<l>dev_display (TiledImage)</l>
+<l>dev_display (Line)</l>
+<l>LineWidth := 2.0</l>
+<l>set_window_param (WindowHandleImages, 'flush', 'false')</l>
+<l>display_result_box (BoxGinko, LineWidth, ColorGinko, '4 (1.00)')</l>
+<l>display_result_box (BoxCapsularumI, LineWidth, ColorCapsularumI, '8 (0.97)')</l>
+<l>display_result_box (BoxGinko2, LineWidth, ColorGinko, '4 (1.00)')</l>
+<l>display_result_box (BoxCapsularumI2, LineWidth, ColorCapsularumI, '8 (0.97)')</l>
+<l>display_result_box (BadBox1, LineWidth, ColorCapsularumI, '4 (0.77)')</l>
+<l>display_result_box (BadBox2, LineWidth, ColorCapsularumI, '4 (0.81)')</l>
+<c>* </c>
+<c>* Add text for image parts</c>
+<l>get_window_extents (WindowHandleImages, Row, Column, WindowWidth, WindowHeight)</l>
+<l>Text := 'max_overlap = 0.5 (default)'</l>
+<l>get_string_extents (WindowHandleImages, Text, _, _, TextWidth, TextHeight)</l>
+<l>TextCol := WindowWidth * 0.25 - TextWidth * 0.5</l>
+<l>dev_disp_text (Text, 'window', WindowHeight - 2 * TextHeight, TextCol, 'black', [], [])</l>
+<l>Text := 'max_overlap = 0.4'</l>
+<l>get_string_extents (WindowHandleImages, Text, _, _, TextWidth, TextHeight)</l>
+<l>TextCol := WindowWidth * 0.75 - TextWidth * 0.5</l>
+<l>dev_disp_text (Text, 'window', WindowHeight - 2 * TextHeight, TextCol, 'black', [], [])</l>
+<c>* </c>
+<c>* Display.</c>
+<l>dev_set_part (0, 0, Height - 1, Width - 1)</l>
+<l>flush_buffer (WindowHandleImages)</l>
+<l>set_window_param (WindowHandleImages, 'flush', 'true')</l>
+<c>* </c>
+<l>return ()</l>
+</body>
+<docu id="dev_display_screen_max_overlap">
+<parameters>
+<parameter id="ExampleInternals"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_display_screen_max_overlap_class_agnostic">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure explains the parameter 'max_overlap_class_agnostic'.</c>
+<c>* </c>
+<l>get_dict_tuple (ExampleInternals, 'show_example_screens', ShowExampleScreens)</l>
+<l>if (not ShowExampleScreens)</l>
+<l>    return ()</l>
+<l>endif</l>
+<c>* </c>
+<c>* Reset the open windows for a clean display.</c>
+<l>set_dict_tuple (ExampleInternals, 'window_images_needed', true)</l>
+<l>set_dict_tuple (ExampleInternals, 'window_legend_needed', false)</l>
+<l>dev_display_example_reset_windows (ExampleInternals)</l>
+<c>* </c>
+<c>* Display explanatory text.</c>
+<l>get_dict_tuple (ExampleInternals, 'window_text', WindowHandleText)</l>
+<l>dev_set_window (WindowHandleText)</l>
+<c>* </c>
+<l>Text := 'Output optimization:'</l>
+<l>dev_disp_text (Text, 'window', 'top', 'left', 'black', 'box', 'true')</l>
+<l>Text[|Text|] := ''</l>
+<l>Text[|Text|] := 'For the same object, more than one class might be'</l>
+<l>Text[|Text|] := 'predicted. In this case, the network outputs several'</l>
+<l>Text[|Text|] := 'bounding boxes with different classes for one object.'</l>
+<l>Text[|Text|] := ''</l>
+<l>Text[|Text|] := 'To suppress all overlapping bounding boxes other than'</l>
+<l>Text[|Text|] := 'the one with the highest confidence,'</l>
+<l>Text[|Text|] := '\'max_overlap_class_agnostic\' can be used. As default,'</l>
+<l>Text[|Text|] := 'this class agnostic bounding box suppression is not performed.'</l>
+<c>* </c>
+<l>dev_disp_text (Text, 'window', 'top', 'left', 'black', 'box', 'true')</l>
+<l>dev_disp_text ('Press Run (F5) to continue', 'window', 'bottom', 'right', 'black', [], [])</l>
+<c>* </c>
+<c>* Display example image.</c>
+<l>get_dict_tuple (ExampleInternals, 'window_images', WindowHandleImages)</l>
+<l>dev_set_window (WindowHandleImages)</l>
+<l>set_window_param (WindowHandleImages, 'flush', 'false')</l>
+<c>* </c>
+<c>* Create example image.</c>
+<l>read_image (Image, 'pill_bag/pill_bag_207.png')</l>
+<l>get_image_size (Image, ImageWidth, ImageHeight)</l>
+<l>ImageZoomWidth := 512</l>
+<l>ZoomedImageToImage := ImageZoomWidth / (1.0 * ImageWidth)</l>
+<l>ImageZoomHeight := round(ImageHeight * ZoomedImageToImage)</l>
+<l>zoom_image_size (Image, ImageZoomed, ImageZoomWidth, ImageZoomHeight, 'constant')</l>
+<c>* </c>
+<l>ImageRatio := real(ImageWidth) / real(ImageHeight)</l>
+<l>Ratio := ImageWidth / (1.0 * ImageHeight)</l>
+<l>CropHeight := 140</l>
+<l>CropWidth := Ratio * CropHeight</l>
+<l>Row1 := 17</l>
+<l>Col1 := 335</l>
+<l>Row2 := Row1 + CropHeight</l>
+<l>Col2 := Col1 + CropWidth * 0.5</l>
+<l>crop_rectangle1 (ImageZoomed, ImagePart, Row1, Col1, Row2, Col2)</l>
+<c>* </c>
+<l>concat_obj (ImagePart, ImagePart, ObjectsConcat)</l>
+<l>tile_images (ObjectsConcat, TiledImage, 2, 'vertical')</l>
+<l>get_image_size (TiledImage, Width, Height)</l>
+<l>dev_set_part (0, 0, Height - 1, Width - 1)</l>
+<l>dev_display (TiledImage)</l>
+<c>* </c>
+<c>* Make line.</c>
+<l>dev_set_color ('gray')</l>
+<l>dev_set_draw ('fill')</l>
+<l>gen_rectangle1 (Line, 0, Width / 2, Height, Width / 2 + 1)</l>
+<c>* </c>
+<c>* Create result boxes.</c>
+<l>get_distinct_colors (10, false, 0, 200, ColorsRainbow)</l>
+<l>tuple_inverse (ColorsRainbow, ColorsRainbow)</l>
+<l>make_neighboring_colors_distinguishable (ColorsRainbow, Colors)</l>
+<l>ColorGinko := Colors[3]</l>
+<l>ColorCapsularumI := Colors[7]</l>
+<l>ColorVitaminB := Colors[9]</l>
+<c>* Result boxes.</c>
+<l>gen_rectangle1 (BoxGinko, 30.1, 4.7, 66.2, 91.7)</l>
+<l>gen_rectangle1 (BoxCapsularumI, 56.0, 37.0, 119.8, 110.9)</l>
+<l>gen_rectangle1 (BoxGinko2, 30.1, 4.7 + Width / 2, 66.2, 91.7 + Width / 2)</l>
+<l>gen_rectangle1 (BoxCapsularumI2, 56.0, 37.0 + Width / 2, 119.8, 110.9 + Width / 2)</l>
+<c>* </c>
+<c>* Generate bad box</c>
+<l>gen_rectangle1 (BadBox1, 25, 3, 61, 88)</l>
+<l>gen_rectangle1 (BadBox2, 63, 36, 124, 103)</l>
+<c>* </c>
+<c>* Draw result box.</c>
+<l>dev_display (TiledImage)</l>
+<l>dev_display (Line)</l>
+<l>LineWidth := 2.0</l>
+<l>set_window_param (WindowHandleImages, 'flush', 'false')</l>
+<l>display_result_box (BoxGinko, LineWidth, ColorGinko, '4 (1.00)')</l>
+<l>display_result_box (BoxCapsularumI, LineWidth, ColorCapsularumI, '8 (0.97)')</l>
+<l>display_result_box (BoxGinko2, LineWidth, ColorGinko, '4 (1.00)')</l>
+<l>display_result_box (BoxCapsularumI2, LineWidth, ColorCapsularumI, '8 (0.97)')</l>
+<l>display_result_box (BadBox1, LineWidth, ColorCapsularumI, '8 (0.82)')</l>
+<l>display_result_box (BadBox2, LineWidth, ColorVitaminB, '9 (0.76)')</l>
+<c>* </c>
+<c>* Add text for image parts</c>
+<l>get_window_extents (WindowHandleImages, Row, Column, WindowWidth, WindowHeight)</l>
+<l>Text := 'max_overlap_class_agnostic = 1.0 (default)'</l>
+<l>get_string_extents (WindowHandleImages, Text, _, _, TextWidth, TextHeight)</l>
+<l>TextCol := WindowWidth * 0.25 - TextWidth * 0.5</l>
+<l>dev_disp_text (Text, 'window', WindowHeight - 2 * TextHeight, TextCol, 'black', [], [])</l>
+<l>Text := 'max_overlap_class_agnostic = 0.7'</l>
+<l>get_string_extents (WindowHandleImages, Text, _, _, TextWidth, TextHeight)</l>
+<l>TextCol := WindowWidth * 0.75 - TextWidth * 0.5</l>
+<l>dev_disp_text (Text, 'window', WindowHeight - 2 * TextHeight, TextCol, 'black', [], [])</l>
+<c>* </c>
+<c>* Display.</c>
+<l>dev_set_part (0, 0, Height - 1, Width - 1)</l>
+<l>flush_buffer (WindowHandleImages)</l>
+<l>set_window_param (WindowHandleImages, 'flush', 'true')</l>
+<c>* </c>
+<l>return ()</l>
+</body>
+<docu id="dev_display_screen_max_overlap_class_agnostic">
+<parameters>
+<parameter id="ExampleInternals"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="create_counting_result_text">
+<interface>
+<ic>
+<par name="NumberDetectionsPerClass" base_type="ctrl" dimension="0"/>
+<par name="ClassNames" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="Text" base_type="ctrl" dimension="0"/>
+<par name="TextColor" base_type="ctrl" dimension="0"/>
+<par name="TextBoxColor" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<c>* This procedure returns a text containing the result of the counting.</c>
+<c>* </c>
+<l>Text := []</l>
+<l>if (max(NumberDetectionsPerClass) &gt; 1)</l>
+<c>    * Get names of duplicate pills.</c>
+<l>    Indices := find(NumberDetectionsPerClass [&gt;] 1,1)</l>
+<l>    PillsDuplicateTuple := ClassNames[Indices]</l>
+<l>    PillsDuplicateString := PillsDuplicateTuple[0]</l>
+<l>    for Index := 1 to |PillsDuplicateTuple| - 1 by 1</l>
+<l>        PillsDuplicateString := PillsDuplicateString + ', ' + PillsDuplicateTuple[Index]</l>
+<l>    endfor</l>
+<c>    * </c>
+<l>    Text[|Text|] := 'Duplicate pills: ' + PillsDuplicateString</l>
+<l>    TextBoxColor := 'red'</l>
+<l>    TextColor := 'white'</l>
+<l>endif</l>
+<l>if (min(NumberDetectionsPerClass) == 0)</l>
+<c>    * Get names of missing pills.</c>
+<l>    Indices := find(NumberDetectionsPerClass,0)</l>
+<l>    PillsMissingTuple := ClassNames[Indices]</l>
+<l>    PillsMissingString := PillsMissingTuple[0]</l>
+<l>    for Index := 1 to |PillsMissingTuple| - 1 by 1</l>
+<l>        PillsMissingString := PillsMissingString + ', ' + PillsMissingTuple[Index]</l>
+<l>    endfor</l>
+<c>    * Add tab for better visualization.</c>
+<l>    AddTab := ''</l>
+<l>    if (Text != [])</l>
+<l>        AddTab := '  '</l>
+<l>    endif</l>
+<l>    Text[|Text|] := 'Pills missing' + AddTab + ': ' + PillsMissingString</l>
+<l>    TextBoxColor := 'red'</l>
+<l>    TextColor := 'white'</l>
+<l>endif</l>
+<l>if (Text == [])</l>
+<l>    Text[|Text|] := 'Bag is fine'</l>
+<l>    TextBoxColor := 'green'</l>
+<l>    TextColor := 'black'</l>
+<l>endif</l>
+<c>* </c>
+<l>return ()</l>
+</body>
+<docu id="create_counting_result_text">
+<parameters>
+<parameter id="ClassNames"/>
+<parameter id="NumberDetectionsPerClass"/>
+<parameter id="Text"/>
+<parameter id="TextBoxColor"/>
+<parameter id="TextColor"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_display_screen_inference_step_2_part_1">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure displays the second explanatory part of the inference.</c>
+<c>* </c>
+<l>get_dict_tuple (ExampleInternals, 'show_example_screens', ShowExampleScreens)</l>
+<l>if (not ShowExampleScreens)</l>
+<l>    return ()</l>
+<l>endif</l>
+<c>* </c>
+<c>* Reset the open windows for a clean display.</c>
+<l>set_dict_tuple (ExampleInternals, 'window_images_needed', true)</l>
+<l>set_dict_tuple (ExampleInternals, 'window_legend_needed', false)</l>
+<l>dev_display_example_reset_windows (ExampleInternals)</l>
+<c>* </c>
+<c>* Display explanatory text.</c>
+<l>get_dict_tuple (ExampleInternals, 'window_text', WindowHandleText)</l>
+<l>dev_set_window (WindowHandleText)</l>
+<c>* </c>
+<l>Text := 'Inference steps for one image:'</l>
+<l>Text[|Text|] := ''</l>
+<l>Text[|Text|] := '1. Generate a DLSample for the image using'</l>
+<l>Text[|Text|] := '   \'gen_dl_samples_from_images\'.'</l>
+<l>Text[|Text|] := ''</l>
+<l>Text[|Text|] := '2. Preprocess the image to suit the trained model'</l>
+<l>Text[|Text|] := '   using \'preprocess_dl_samples\'.'</l>
+<c>* </c>
+<l>dev_disp_text (Text, 'window', 'top', 'left', 'black', 'box', 'true')</l>
+<l>dev_disp_text ('Press Run (F5) to continue', 'window', 'bottom', 'right', 'black', [], [])</l>
+<c>* </c>
+<c>* Display example images,</c>
+<l>get_dict_tuple (ExampleInternals, 'window_images', WindowHandleImages)</l>
+<l>dev_set_window (WindowHandleImages)</l>
+<l>set_window_param (WindowHandleImages, 'flush', 'false')</l>
+<c>* </c>
+<l>get_dict_tuple (ExampleInternals, 'example_image_file', ExampleImageFile)</l>
+<l>read_image (ImageRaw, ExampleImageFile)</l>
+<l>get_image_size (ImageRaw, Width, Height)</l>
+<c>* </c>
+<c>* Create a loupe to see difference of resolution</c>
+<l>LoupeZoom := 7.0</l>
+<l>LoupeMargin := 30</l>
+<l>LoupeWindowSize := 45</l>
+<l>LoupeRow1 := 368</l>
+<l>LoupeColumn1 := 577</l>
+<l>dev_set_draw ('margin')</l>
+<l>dev_set_color ('light blue')</l>
+<l>dev_set_line_width (2)</l>
+<c>* Prepare images for loupe</c>
+<l>crop_rectangle1 (ImageRaw, ImagePart, LoupeRow1, LoupeColumn1, LoupeRow1 + LoupeWindowSize - 1, LoupeColumn1 + LoupeWindowSize - 1)</l>
+<l>zoom_image_factor (ImagePart, ImagePart2, LoupeZoom, LoupeZoom, 'nearest_neighbor')</l>
+<l>hom_mat2d_identity (HomMat2DIdentity)</l>
+<l>hom_mat2d_translate (HomMat2DIdentity, Height - LoupeZoom * LoupeWindowSize - LoupeMargin, LoupeMargin, HomMat2DTranslate)</l>
+<l>affine_trans_image (ImagePart2, ImageTrans, HomMat2DTranslate, 'constant', 'true')</l>
+<c>* Draw loupe rectangles</c>
+<l>gen_rectangle1 (Loupe1, LoupeRow1, LoupeColumn1, LoupeRow1 + LoupeWindowSize, LoupeColumn1 + LoupeWindowSize)</l>
+<l>gen_rectangle1 (Loupe2, Height - LoupeZoom * LoupeWindowSize - LoupeMargin, LoupeMargin, Height - LoupeMargin - 1, LoupeZoom * LoupeWindowSize + LoupeMargin - 1)</l>
+<c>* Draw loupe lines</c>
+<l>set_window_param (WindowHandleImages, 'flush', 'false')</l>
+<l>gen_region_line (LoupeLine1, Height - LoupeZoom * LoupeWindowSize - LoupeMargin, LoupeMargin, LoupeRow1, LoupeColumn1)</l>
+<l>gen_region_line (LoupeLine2, Height - LoupeMargin - 1, LoupeZoom * LoupeWindowSize + LoupeMargin - 1, LoupeRow1 + LoupeWindowSize, LoupeColumn1 + LoupeWindowSize)</l>
+<c>* </c>
+<l>get_image_size (ImageRaw, Width, Height)</l>
+<l>dev_set_part (0, 0, Height - 1, Width - 1)</l>
+<l>dev_display (ImageRaw)</l>
+<l>set_window_param (WindowHandleImages, 'flush', 'false')</l>
+<l>dev_display (ImageTrans)</l>
+<l>dev_display (Loupe1)</l>
+<l>dev_display (Loupe2)</l>
+<l>dev_display (LoupeLine1)</l>
+<l>dev_display (LoupeLine2)</l>
+<l>dev_disp_text ('Raw image', 'window', 'top', 'left', 'black', [], [])</l>
+<c>* </c>
+<l>get_string_extents (WindowHandleImages, 'test_string', _, _, _, TextHeight)</l>
+<l>dev_disp_text ('Original resolution', 'image', Height - LoupeZoom * LoupeWindowSize - LoupeMargin - 3 * TextHeight, LoupeMargin, 'black', [], [])</l>
+<c>* </c>
+<l>flush_buffer (WindowHandleImages)</l>
+<l>set_window_param (WindowHandleImages, 'flush', 'true')</l>
+<c>* </c>
+<l>return ()</l>
+</body>
+<docu id="dev_display_screen_inference_step_2_part_1">
+<parameters>
+<parameter id="ExampleInternals"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="get_distinct_colors">
+<interface>
+<ic>
+<par name="NumColors" base_type="ctrl" dimension="0"/>
+<par name="Random" base_type="ctrl" dimension="0"/>
+<par name="StartColor" base_type="ctrl" dimension="0"/>
+<par name="EndColor" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="Colors" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<c>* </c>
+<c>* We get distinct color-values first in HLS color-space.</c>
+<c>* Assumes hue [0, EndColor), lightness [0, 1), saturation [0, 1).</c>
+<c>* </c>
+<c>* Parameter checks.</c>
+<c>* NumColors.</c>
+<l>if (NumColors &lt; 1)</l>
+<l>    throw ('NumColors should be at least 1')</l>
+<l>endif</l>
+<l>if (not is_int(NumColors))</l>
+<l>    throw ('NumColors should be of type int')</l>
+<l>endif</l>
+<l>if (|NumColors| != 1)</l>
+<l>    throw ('NumColors should have length 1')</l>
+<l>endif</l>
+<c>* Random.</c>
+<l>if (Random != 0 and Random != 1)</l>
+<l>    tuple_is_string (Random, IsString)</l>
+<l>    if (IsString)</l>
+<l>        Random := Random == 'true' or 'false'</l>
+<l>    else</l>
+<l>        throw ('Random should be either true or false')</l>
+<l>    endif</l>
+<l>endif</l>
+<c>* StartColor.</c>
+<l>if (|StartColor| != 1)</l>
+<l>    throw ('StartColor should have length 1')</l>
+<l>endif</l>
+<l>if (StartColor &lt; 0 or StartColor &gt; 255)</l>
+<l>    throw ('StartColor should be in the range [0, 255]')</l>
+<l>endif</l>
+<l>if (not is_int(StartColor))</l>
+<l>    throw ('StartColor should be of type int')</l>
+<l>endif</l>
+<c>* EndColor.</c>
+<l>if (|EndColor| != 1)</l>
+<l>    throw ('EndColor should have length 1')</l>
+<l>endif</l>
+<l>if (EndColor &lt; 0 or EndColor &gt; 255)</l>
+<l>    throw ('EndColor should be in the range [0, 255]')</l>
+<l>endif</l>
+<l>if (not is_int(EndColor))</l>
+<l>    throw ('EndColor should be of type int')</l>
+<l>endif</l>
+<c>* </c>
+<c>* Color generation.</c>
+<l>if (StartColor &gt; EndColor)</l>
+<l>    EndColor := EndColor + 255</l>
+<l>endif</l>
+<l>if (NumColors != 1)</l>
+<l>    Hue := (StartColor + int((EndColor - StartColor) * real([0:NumColors - 1]) / real(NumColors - 1))) % 255</l>
+<l>else</l>
+<l>    Hue := mean([StartColor,EndColor])</l>
+<l>endif</l>
+<l>if (Random)</l>
+<l>    Hue := Hue[sort_index(rand(NumColors))]</l>
+<l>    Lightness := int((5.0 + rand(NumColors)) * 255.0 / 10.0)</l>
+<l>    Saturation := int((9.0 + rand(NumColors)) * 255.0 / 10.0)</l>
+<l>else</l>
+<l>    Lightness := int(gen_tuple_const(NumColors,0.55) * 255.0)</l>
+<l>    Saturation := int(gen_tuple_const(NumColors,0.95) * 255.0)</l>
+<l>endif</l>
+<c>* </c>
+<c>* Write colors to a 3-channel image in order to transform easier.</c>
+<l>gen_image_const (HLSImageH, 'byte', 1, NumColors)</l>
+<l>gen_image_const (HLSImageL, 'byte', 1, NumColors)</l>
+<l>gen_image_const (HLSImageS, 'byte', 1, NumColors)</l>
+<l>get_region_points (HLSImageH, Rows, Columns)</l>
+<l>set_grayval (HLSImageH, Rows, Columns, Hue)</l>
+<l>set_grayval (HLSImageL, Rows, Columns, Lightness)</l>
+<l>set_grayval (HLSImageS, Rows, Columns, Saturation)</l>
+<c>* </c>
+<c>* Convert from HLS to RGB.</c>
+<l>trans_to_rgb (HLSImageH, HLSImageL, HLSImageS, ImageR, ImageG, ImageB, 'hls')</l>
+<c>* </c>
+<c>* Get RGB-values and transform to Hex.</c>
+<l>get_grayval (ImageR, Rows, Columns, Red)</l>
+<l>get_grayval (ImageG, Rows, Columns, Green)</l>
+<l>get_grayval (ImageB, Rows, Columns, Blue)</l>
+<l>Colors := '#' + Red$'02x' + Green$'02x' + Blue$'02x'</l>
+<l>return ()</l>
+<c></c>
+</body>
+<docu id="get_distinct_colors">
+<abstract lang="en_US">Based on the HLS-colorspace, generate NumColors distinct colors.
+If Random is true, the returned colors are different with each call to this procedure.
+The output is a vector of NumColors [R,G,B] tuples, where the single color values are given as hex-strings.
+
+If Random is set to true, the colors are generated randomly and they differ for each call of get_distinct_colors, except if a random seed is set.
+
+StartColor and EndColor determine the start- and end-angle of the circle sector where the hue-values of the colors are sampled in HLS-colorspace. Both have to be integers in the range [0,255], where 0 corresponds to zero degrees and 255 corresponds to 360 degrees (the full circle). Note that for a StartColor of zero and EndColor close to 255, the first and the last of the generated colors look very similar. As a hint of 0 corresponds approximately to red, 45 to yellow, 80 to green, 130 to cyan, 160 to blue, 200 to violet, 220 to pink and 255 again to red. As 0 and 255 both correspond to the same point on the hue-color-circle, it is also possible to set a StartColor that is larger than EndColor.</abstract>
+<short lang="en_US">Generates NumColors distinct colors</short>
+<parameters>
+<parameter id="Colors">
+<default_type>string</default_type>
+<description lang="en_US">Tuple of NumColors RGB color values given as hex-strings.</description>
+<mixed_type>false</mixed_type>
+<multivalue>optional</multivalue>
+<sem_type>color</sem_type>
+<type_list>
+<item>string</item>
+</type_list>
+</parameter>
+<parameter id="EndColor">
+<default_type>integer</default_type>
+<default_value>255</default_value>
+<description lang="en_US">Corresponds to the end-angle of the circle sector where the hue-values of the colors are sampled in HLS-color-space. Range [0, 255] corresponds to degrees of [0, 360].</description>
+<mixed_type>false</mixed_type>
+<multivalue>false</multivalue>
+<sem_type>integer</sem_type>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_max>255</value_max>
+<value_min>1</value_min>
+</parameter>
+<parameter id="NumColors">
+<default_value>NumColors</default_value>
+<description lang="en_US">Number of colors to be generated.</description>
+<multivalue>false</multivalue>
+<sem_type>integer</sem_type>
+</parameter>
+<parameter id="Random">
+<default_type>string</default_type>
+<default_value>false</default_value>
+<description lang="en_US">If true, the colors are generated randomly and they differ for each call of get_distinct_colors, except if a random seed is set.
+If false, the colors are generated deterministically.</description>
+<multivalue>false</multivalue>
+<sem_type>integer</sem_type>
+<type_list>
+<item>string</item>
+</type_list>
+<values>
+<item>true</item>
+<item>false</item>
+</values>
+</parameter>
+<parameter id="StartColor">
+<default_type>integer</default_type>
+<default_value>0</default_value>
+<description lang="en_US">Corresponds to he start-angle of the circle sector where the hue-values of the colors are sampled in HLS-color-space. Range [0, 255] corresponds to degrees of [0, 360].</description>
+<multivalue>false</multivalue>
+<sem_type>integer</sem_type>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_max>254</value_max>
+<value_min>0</value_min>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+<procedure name="make_neighboring_colors_distinguishable">
+<interface>
+<ic>
+<par name="ColorsRainbow" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="Colors" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<c>* Shuffle the input colors in a deterministic way</c>
+<c>* to make adjacent colors more distinguishable.</c>
+<c>* Neighboring colors from the input are distributed to every NumChunks</c>
+<c>* position in the output.</c>
+<c>* Depending on the number of colors, increase NumChunks.</c>
+<l>NumColors := |ColorsRainbow|</l>
+<l>if (NumColors &gt;= 8)</l>
+<l>    NumChunks := 3</l>
+<l>    if (NumColors &gt;= 40)</l>
+<l>        NumChunks := 6</l>
+<l>    elseif (NumColors &gt;= 20)</l>
+<l>        NumChunks := 4</l>
+<l>    endif</l>
+<l>    Colors := gen_tuple_const(NumColors,-1)</l>
+<c>    * Check if the Number of Colors is dividable by NumChunks.</c>
+<l>    NumLeftOver := NumColors % NumChunks</l>
+<l>    ColorsPerChunk := int(NumColors / NumChunks)</l>
+<l>    StartIdx := 0</l>
+<l>    for S := 0 to NumChunks - 1 by 1</l>
+<l>        EndIdx := StartIdx + ColorsPerChunk - 1</l>
+<l>        if (S &lt; NumLeftOver)</l>
+<l>            EndIdx := EndIdx + 1</l>
+<l>        endif</l>
+<l>        IdxsLeft := [S:NumChunks:NumColors - 1]</l>
+<l>        IdxsRight := [StartIdx:EndIdx]</l>
+<l>        Colors[S:NumChunks:NumColors - 1] := ColorsRainbow[StartIdx:EndIdx]</l>
+<l>        StartIdx := EndIdx + 1</l>
+<l>    endfor</l>
+<l>else</l>
+<l>    Colors := ColorsRainbow</l>
+<l>endif</l>
+<l>return ()</l>
+</body>
+<docu id="make_neighboring_colors_distinguishable">
+<abstract lang="en_US">Shuffles the tuple of input colors ColorsRainbow in a deterministic way such that adjacent colors are more distinguishable.
+The method only shuffles the input if the input tuple has at least eight elements.</abstract>
+<short lang="en_US">shuffles the input colors in a deterministic way</short>
+<parameters>
+<parameter id="Colors">
+<description lang="en_US">Tuple of shuffled output colors.</description>
+<multivalue>optional</multivalue>
+<sem_type>string</sem_type>
+</parameter>
+<parameter id="ColorsRainbow">
+<default_value>ColorsRainbow</default_value>
+<description lang="en_US">Input colors to be shuffled</description>
+<multivalue>optional</multivalue>
+<sem_type>string</sem_type>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_display_screen_device">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+<par name="DLDevice" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure displays information about the used device.</c>
+<c></c>
+<c>* Reset the open windows for a clean display.</c>
+<l>set_dict_tuple (ExampleInternals, 'window_images_needed', false)</l>
+<l>set_dict_tuple (ExampleInternals, 'window_legend_needed', false)</l>
+<l>dev_display_example_reset_windows (ExampleInternals)</l>
+<c></c>
+<c>* Display the explanatory text.</c>
+<l>get_dict_tuple (ExampleInternals, 'window_text', WindowHandleText)</l>
+<l>dev_set_window (WindowHandleText)</l>
+<c></c>
+<l>get_dl_device_param (DLDevice, 'type', DLDeviceType)</l>
+<l>get_dl_device_param (DLDevice, 'name', DLDeviceName)</l>
+<c></c>
+<l>Text := 'This example can be run on any deep learning device.'</l>
+<l>Text[|Text|] := ''</l>
+<l>if (DLDeviceType != 'gpu')</l>
+<l>    Text[|Text|] := 'No GPU with necessary drivers and libraries has been found.'</l>
+<l>    Text[|Text|] := ''</l>
+<l>endif</l>
+<l>Text[|Text|] := 'This example will run the deep learning operators'</l>
+<l>Text[|Text|] := 'on the following device:'</l>
+<l>Text[|Text|] := 'Device type: ' + DLDeviceType</l>
+<l>Text[|Text|] := 'Device name: ' + DLDeviceName</l>
+<c></c>
+<l>dev_disp_text (Text, 'window', 'top', 'left', 'black', 'box', 'true')</l>
+<l>dev_disp_text ('Press Run (F5) to continue', 'window', 'bottom', 'right', 'black', [], [])</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="dev_display_screen_device">
+<abstract lang="en_US">Display a message to mention on which device the deep learning operators will run.</abstract>
+<parameters>
+<parameter id="DLDevice"/>
+<parameter id="ExampleInternals"/>
+</parameters>
+</docu>
+</procedure>
+</hdevelop>

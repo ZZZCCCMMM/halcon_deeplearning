@@ -1,0 +1,342 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="23.05.0.0">
+<procedure name="main">
+<interface/>
+<body>
+<c>*** 设置输入输出路径 ***</c>
+<c>*总路径</c>
+<l>AllDir := 'D:/desk/相机标定/缺陷检测/'</l>
+<c>*图片路径</c>
+<l>ImageDir := AllDir + 'images'</l>
+<c>*分割图片路径</c>
+<l>DivisionImagesDir := AllDir + 'divisionImages'</l>
+<c>*存放数据总路径</c>
+<l>DataDir := AllDir + 'data'</l>
+<c>*预处理后的路径</c>
+<l>DataDirectoryBaseName := DataDir + '/dldataset'</l>
+<c>*存储预处理参数</c>
+<l>PreprocessParamFileBaseName := DataDir + '/dl_preprocess_param'</l>
+<c></c>
+<c></c>
+<c>*** 设置参数 ***</c>
+<c>*类别名称</c>
+<l>ClassNames := ['good','contamination','crack']</l>
+<c>*类别ID</c>
+<l>ClassIDs := [0,1,2]</l>
+<c>*拆分数据集</c>
+<l>TrainingPercent := 70</l>
+<l>ValidationPercent := 15</l>
+<c>*图片尺寸参数</c>
+<l>ImageWidth := 400</l>
+<l>ImageHeight := 400</l>
+<l>ImageNumChannels := 3</l>
+<c>*图片灰度范围</c>
+<l>ImageRangeMin := -127</l>
+<l>ImageRangeMax := 128</l>
+<c>*图像预处理的进一步参数</c>
+<l>ContrastNormalization := 'false'</l>
+<l>DomainHandling := 'full_domain'</l>
+<l>IgnoreClassIDs := []</l>
+<l>SetBackgroundID := []</l>
+<l>ClassIDsBackground := []</l>
+<c>*随机种子</c>
+<l>SeedRand := 42</l>
+<c></c>
+<c>*** 处理图片并进行拆分 ***</c>
+<c>*设置随机种子</c>
+<l>set_system ('seed_rand', SeedRand)</l>
+<c>*通过参数将文件夹中数据分割为数据集 参数：图像路径、分割图像路径、类别名称、类别ID、图像路径列表、分割图像路径列表、字典、生成的数据集</c>
+<l>read_dl_dataset_segmentation (ImageDir, DivisionImagesDir, ClassNames, ClassIDs, [], [], [], DLDataset)</l>
+<c>*拆分数据集</c>
+<l>split_dl_dataset (DLDataset, TrainingPercent, ValidationPercent, [])</l>
+<c></c>
+<c>*** 预处理数据集 ***</c>
+<l>file_exists (DataDir, FileExists)</l>
+<l>if (not FileExists)</l>
+<l>    make_dir (DataDir)</l>
+<l>endif</l>
+<c>*创建预处理参数</c>
+<l>create_dl_preprocess_param ('segmentation', ImageWidth, ImageHeight, ImageNumChannels, ImageRangeMin, ImageRangeMax, ContrastNormalization, DomainHandling, IgnoreClassIDs, SetBackgroundID, ClassIDsBackground, [], DLPreprocessParam)</l>
+<c>*预处理后的数据集路径</c>
+<l>PreprocessParamFile := PreprocessParamFileBaseName +'.hdict'</l>
+<c>*将参数写入</c>
+<l>write_dict (DLPreprocessParam, PreprocessParamFile, [], [])</l>
+<c>*创建字典</c>
+<l>create_dict (GenParam)</l>
+<l>set_dict_tuple (GenParam, 'overwrite_files', true)</l>
+<c>*预处理</c>
+<l>preprocess_dl_dataset (DLDataset, DataDirectoryBaseName, DLPreprocessParam, GenParam, DLDatasetFilename)</l>
+<c></c>
+<c>***　测试　***</c>
+<c>*随机选取10张图像</c>
+<l>get_dict_tuple (DLDataset, 'samples', DatasetSamples)</l>
+<l>find_dl_samples (DatasetSamples, 'split', 'train', 'match', SampleIndices)</l>
+<l>tuple_shuffle (SampleIndices, ShuffledIndices)</l>
+<l>read_dl_samples (DLDataset, ShuffledIndices[0:9], DLSampleBatchDisplay)</l>
+<c>* </c>
+<l>create_dict (WindowHandleDict)</l>
+<l>for Index := 0 to |DLSampleBatchDisplay| - 1 by 1</l>
+<c>    *可视化不同的图像、注释和推理结果</c>
+<l>    dev_display_dl_data (DLSampleBatchDisplay[Index], [], DLDataset, ['image','segmentation_image_ground_truth'], [], WindowHandleDict)</l>
+<l>    get_dict_tuple (WindowHandleDict, 'segmentation_image_ground_truth', WindowHandleImage)</l>
+<l>    dev_set_window (WindowHandleImage[1])</l>
+<l>    Text := 'Press Run (F5) to continue'</l>
+<l>    dev_disp_text (Text, 'window', 400, 40, 'black', [], [])</l>
+<l>    stop ()</l>
+<l>endfor</l>
+<c>*关闭窗体</c>
+<l>dev_display_dl_data_close_windows (WindowHandleDict)</l>
+<c> </c>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+<procedure name="dev_open_example_image_window">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure initializes the graphic windows that are used to display example images.</c>
+<c></c>
+<l>WindowWidthText := 800</l>
+<l>WindowHeightText := 300</l>
+<l>WindowWidthImage := 800</l>
+<l>WindowHeightImages := 500</l>
+<l>WindowBGColor := 'gray'</l>
+<c></c>
+<l>WindowYImages := WindowHeightText + 60</l>
+<l>WindowXImages := 0</l>
+<l>dev_open_window (WindowYImages, WindowXImages, WindowWidthImage, WindowHeightImages, WindowBGColor, WindowHandleImages)</l>
+<l>set_display_font (WindowHandleImages, 16, 'mono', 'true', 'false')</l>
+<l>set_dict_tuple (ExampleInternals, 'window_images', WindowHandleImages)</l>
+<l>set_dict_tuple (ExampleInternals, 'window_images_width', WindowWidthImage)</l>
+<l>set_dict_tuple (ExampleInternals, 'window_images_height', WindowHeightImages)</l>
+<l>set_dict_tuple (ExampleInternals, 'window_images_x', WindowXImages)</l>
+<l>set_dict_tuple (ExampleInternals, 'window_images_y', WindowYImages)</l>
+<l>return ()</l>
+</body>
+<docu id="dev_open_example_image_window">
+<parameters>
+<parameter id="ExampleInternals"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_open_example_legend_window">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+<par name="WindowWidth" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure initializes the graphic windows that are used to display a legend.</c>
+<c></c>
+<l>get_dict_tuple (ExampleInternals, 'window_images_height', WindowImagesHeight)</l>
+<l>get_dict_tuple (ExampleInternals, 'window_images_width', WindowImagesWidth)</l>
+<l>get_dict_tuple (ExampleInternals, 'window_images_x', WindowImagesX)</l>
+<l>get_dict_tuple (ExampleInternals, 'window_images_y', WindowImagesY)</l>
+<l>dev_open_window (WindowImagesY, WindowImagesX + WindowImagesWidth + 5, WindowWidth, WindowImagesHeight, 'black', WindowHandleLegend)</l>
+<l>set_display_font (WindowHandleLegend, 14, 'mono', 'true', 'false')</l>
+<l>set_dict_tuple (ExampleInternals, 'window_legend', WindowHandleLegend)</l>
+<l>return ()</l>
+</body>
+<docu id="dev_open_example_legend_window">
+<parameters>
+<parameter id="ExampleInternals"/>
+<parameter id="WindowWidth"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_close_example_windows">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure closes all example windows.</c>
+<c></c>
+<l>get_dict_tuple (ExampleInternals, 'show_example_screens', ShowExampleScreens)</l>
+<l>if (not ShowExampleScreens)</l>
+<l>    return ()</l>
+<l>endif</l>
+<c></c>
+<l>get_dict_param (ExampleInternals, 'keys', [], Keys)</l>
+<l>for Index := 0 to |Keys| by 1</l>
+<l>    try</l>
+<l>        get_dict_tuple (ExampleInternals, Keys[Index], WindowHandle)</l>
+<l>        dev_set_window (WindowHandle)</l>
+<l>        dev_close_window ()</l>
+<l>    catch (Exception)</l>
+<l>    endtry</l>
+<l>endfor</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="dev_close_example_windows">
+<parameters>
+<parameter id="ExampleInternals">
+<default_type>integer</default_type>
+<mixed_type>false</mixed_type>
+<sem_type>dict</sem_type>
+<type_list>
+<item>integer</item>
+</type_list>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_display_screen_next_example">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure gives a hint to the next segmentation example 'segment_pill_defects_deep_learning_2_train.hdev'</c>
+<c></c>
+<l>get_dict_tuple (ExampleInternals, 'show_example_screens', ShowExampleScreens)</l>
+<l>if (not ShowExampleScreens)</l>
+<l>    return ()</l>
+<l>endif</l>
+<c></c>
+<c>* Reset the open windows for a clean display.</c>
+<l>set_dict_tuple (ExampleInternals, 'window_images_needed', false)</l>
+<l>dev_display_example_reset_windows (ExampleInternals)</l>
+<c></c>
+<c>* Display the explanatory text.</c>
+<l>get_dict_tuple (ExampleInternals, 'window_text', WindowHandleText)</l>
+<l>dev_set_window (WindowHandleText)</l>
+<c></c>
+<l>Text := 'Now the first part \'Dataset preprocessing\' of the workflow'</l>
+<l>Text[|Text|] := 'for DL segmentation is finished.'</l>
+<l>Text[|Text|] := ''</l>
+<l>Text[|Text|] := 'The dataset is ready for training. '</l>
+<l>Text[|Text|] := ''</l>
+<l>Text[|Text|] := 'To get to the example of the DL segmentation training process'</l>
+<l>Text[|Text|] := 'please open \'segment_pill_defects_deep_learning_2_train.hdev\'.'</l>
+<c></c>
+<l>dev_disp_text (Text, 'window', 'top', 'left', 'black', 'box', 'true')</l>
+<l>dev_disp_text ('Please open the next example.', 'window', 'bottom', 'right', 'black', [], [])</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="dev_display_screen_next_example">
+<parameters>
+<parameter id="ExampleInternals"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_display_example_reset_windows">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure resets the graphics windows.</c>
+<c></c>
+<c>* Close any windows that are listed in key 'window_handles_to_close'.</c>
+<l>try</l>
+<l>    get_dict_tuple (ExampleInternals, 'window_handles_to_close', WindowHandlesToClose)</l>
+<l>catch (Exception)</l>
+<l>    WindowHandlesToClose := []</l>
+<l>endtry</l>
+<l>for I := 0 to |WindowHandlesToClose| - 1 by 1</l>
+<l>    dev_set_window (WindowHandlesToClose[I])</l>
+<l>    dev_close_window ()</l>
+<l>endfor</l>
+<l>set_dict_tuple (ExampleInternals, 'window_handles_to_close', [])</l>
+<c></c>
+<c>* Open image window if needed</c>
+<l>get_dict_param (ExampleInternals, 'keys', [], WindowHandleKeys)</l>
+<l>tuple_find (WindowHandleKeys, 'window_images', Index)</l>
+<l>get_dict_tuple (ExampleInternals, 'window_images_needed', WindowImagesNeeded)</l>
+<l>if (WindowImagesNeeded and Index == -1)</l>
+<c>    * Open new window for images</c>
+<l>    dev_open_example_image_window (ExampleInternals)</l>
+<l>elseif (not WindowImagesNeeded and Index != -1)</l>
+<c>    * Window for images exists but is not needed -&gt; close it</c>
+<l>    get_dict_tuple (ExampleInternals, 'window_images', WindowHandleImages)</l>
+<l>    dev_set_window (WindowHandleImages)</l>
+<l>    dev_close_window ()</l>
+<c>    * Delete key</c>
+<l>    remove_dict_key (ExampleInternals, 'window_images')</l>
+<l>endif</l>
+<c></c>
+<c>* Open legend window if needed</c>
+<l>get_dict_param (ExampleInternals, 'keys', [], WindowHandleKeys)</l>
+<l>tuple_find (WindowHandleKeys, 'window_legend', Index)</l>
+<l>get_dict_tuple (ExampleInternals, 'window_legend_needed', WindowLegendNeeded)</l>
+<l>if (WindowLegendNeeded and Index == -1)</l>
+<c>    * Open new window for legend</c>
+<l>    dev_open_example_legend_window (ExampleInternals, 280)</l>
+<l>elseif (not WindowLegendNeeded and Index != -1)</l>
+<c>    * Window for legend exists but is not needed -&gt; close it</c>
+<l>    get_dict_tuple (ExampleInternals, 'window_legend', WindowHandleLegend)</l>
+<l>    dev_set_window (WindowHandleLegend)</l>
+<l>    dev_close_window ()</l>
+<c>    * Delete key</c>
+<l>    remove_dict_key (ExampleInternals, 'window_legend')</l>
+<l>endif</l>
+<c></c>
+<l>get_dict_tuple (ExampleInternals, 'clear_windows', ClearWindows)</l>
+<l>ClearAllWindows := find(ClearWindows,'all')</l>
+<l>if (|ClearAllWindows| and ClearAllWindows &gt; -1)</l>
+<l>    ClearAllWindows := true</l>
+<l>else</l>
+<l>    ClearAllWindows := false</l>
+<l>endif</l>
+<c></c>
+<c>* Set the correct area (part) of the image window.</c>
+<l>try</l>
+<l>    get_dict_tuple (ExampleInternals, 'window_images', WindowHandleImages)</l>
+<l>    ClearImageWindow := find(ClearWindows,WindowHandleImages)</l>
+<l>    if (ClearAllWindows or (|ClearImageWindow| and ClearImageWindow &gt; -1))</l>
+<l>        dev_set_window (WindowHandleImages)</l>
+<l>        dev_clear_window ()</l>
+<l>        dev_set_part (1, 1, -1, -1)</l>
+<l>    endif</l>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<c></c>
+<c>* Set the correct area (part) of the legend window.</c>
+<l>try</l>
+<l>    get_dict_tuple (ExampleInternals, 'window_legend', WindowHandleLegend)</l>
+<l>    ClearLegendWindow := find(ClearWindows,WindowHandleLegend)</l>
+<l>    if (ClearAllWindows or (|ClearLegendWindow| and ClearLegendWindow &gt; -1))</l>
+<l>        dev_set_window (WindowHandleLegend)</l>
+<l>        dev_clear_window ()</l>
+<l>        dev_set_part (1, 1, -1, -1)</l>
+<l>    endif</l>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<c></c>
+<l>try</l>
+<l>    get_dict_tuple (ExampleInternals, 'window_text', WindowHandleText)</l>
+<l>    ClearTextWindow := find(ClearWindows,WindowHandleText)</l>
+<l>    if (ClearAllWindows or (|ClearTextWindow| and ClearTextWindow &gt; -1))</l>
+<l>        dev_set_window (WindowHandleText)</l>
+<l>        dev_clear_window ()</l>
+<l>    endif</l>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<l>return ()</l>
+</body>
+<docu id="dev_display_example_reset_windows">
+<parameters>
+<parameter id="ExampleInternals">
+<default_type>integer</default_type>
+<mixed_type>false</mixed_type>
+<sem_type>dict</sem_type>
+<type_list>
+<item>integer</item>
+</type_list>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+</hdevelop>
