@@ -1,0 +1,1181 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<hdevelop file_version="1.2" halcon_version="23.05.0.0">
+<procedure name="main">
+<interface/>
+<body>
+<l>init (DLModelHandle, ClassNames, ClassIDs, DLPreprocessParam)</l>
+<l>read_image (Image, 'D:/desk/qt/halcon_sourse/imgs/1 (0).png')</l>
+<l>gen_dl_samples_from_images (Image, DLSampleBatch)</l>
+<l>preprocess_dl_samples (DLSampleBatch, DLPreprocessParam)</l>
+<l>apply_dl_model (DLModelHandle, DLSampleBatch, ['segmentation_image', 'segmentation_confidence'], DLResultBatch)</l>
+<l>DLResultBatchDict := DLResultBatch[0]</l>
+<l>threshold (DLResultBatchDict.segmentation_image, ClassRegions, ClassIDs, ClassIDs)</l>
+</body>
+<docu id="main">
+<parameters/>
+</docu>
+</procedure>
+<procedure name="dev_display_ok_nok">
+<interface>
+<ic>
+<par name="Areas" base_type="ctrl" dimension="0"/>
+<par name="WindowHandleImage" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedures displays OK if no defects are segmented and NOK otherwise.</c>
+<c></c>
+<c>* The first entry of Area corresponds to class 'good'.</c>
+<l>if (sum(Areas) - Areas[0] &gt; 0)</l>
+<l>    Text := 'NOK'</l>
+<l>    BoxColor := 'red'</l>
+<l>else</l>
+<l>    Text := 'OK'</l>
+<l>    BoxColor := 'green'</l>
+<l>endif</l>
+<l>set_display_font (WindowHandleImage, 24, 'mono', 'true', 'false')</l>
+<l>dev_disp_text (Text, 'window', 'top', 'left', 'black', ['box_color', 'shadow'], [BoxColor,'false'])</l>
+<l>set_display_font (WindowHandleImage, 16, 'mono', 'true', 'false')</l>
+<l>dev_disp_text ('Press Run (F5) to continue', 'window', 'bottom', 'left', 'black', 'box', 'true')</l>
+<l>flush_buffer (WindowHandleImage)</l>
+<l>return ()</l>
+</body>
+<docu id="dev_display_ok_nok">
+<parameters>
+<parameter id="Areas"/>
+<parameter id="WindowHandleImage"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_display_screen_final">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure shows the final screen to conclude this example.</c>
+<c></c>
+<l>get_dict_tuple (ExampleInternals, 'show_example_screens', ShowExampleScreens)</l>
+<l>if (not ShowExampleScreens)</l>
+<l>    return ()</l>
+<l>endif</l>
+<c></c>
+<l>dev_open_example_text_window (ExampleInternals)</l>
+<c></c>
+<l>get_dict_tuple (ExampleInternals, 'window_text', WindowHandleText)</l>
+<l>dev_set_window (WindowHandleText)</l>
+<c></c>
+<c>* Display instruction text.</c>
+<l>Text := 'Congratulations!'</l>
+<l>Text[|Text|] := 'You have finished the series of examples for DL segmentation.'</l>
+<l>Text[|Text|] := ''</l>
+<l>Text[|Text|] := 'You can now train a segmentation model on your own data.'</l>
+<l>Text[|Text|] := ''</l>
+<c></c>
+<l>dev_disp_text (Text, 'window', 'top', 'left', 'black', 'box', 'true')</l>
+<c></c>
+<l>dev_disp_text ('End of program.', 'window', 'bottom', 'right', 'black', 'box', 'true')</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="dev_display_screen_final">
+<parameters>
+<parameter id="ExampleInternals"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_display_screen_example_images">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+<par name="UsePretrainedModel" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure introduces the task and displays some example images.</c>
+<c></c>
+<l>get_dict_tuple (ExampleInternals, 'show_example_screens', ShowExampleScreens)</l>
+<l>if (not ShowExampleScreens)</l>
+<l>    return ()</l>
+<l>endif</l>
+<c></c>
+<c>* Reset the open windows for a clean display.</c>
+<l>set_dict_tuple (ExampleInternals, 'window_images_needed', false)</l>
+<l>dev_display_example_reset_windows (ExampleInternals)</l>
+<c></c>
+<c>* Set text window handle.</c>
+<l>get_dict_tuple (ExampleInternals, 'window_text', WindowHandleText)</l>
+<l>dev_set_window (WindowHandleText)</l>
+<c></c>
+<c>* Check if the trained model and preprocessing parameters exist.</c>
+<c></c>
+<c>* Example data directory where the outputs of previous examples are saved.</c>
+<l>ExampleDataDir := 'segment_pill_defects_data'</l>
+<l>file_exists (ExampleDataDir, ExampleDataDirExists)</l>
+<c></c>
+<c>* Preprocessing parameters.</c>
+<l>if (UsePretrainedModel)</l>
+<l>    PreprocessParamFileName := 'segment_pill_defects_preprocess_param.hdict'</l>
+<l>else</l>
+<l>    DataDirectory := ExampleDataDir + '/dldataset_pill_400x400'</l>
+<l>    PreprocessParamFileName := DataDirectory + '/dl_preprocess_param.hdict'</l>
+<l>endif</l>
+<l>file_exists (PreprocessParamFileName, PreprocessParamsExist)</l>
+<c></c>
+<c>* Retrained model file name.</c>
+<l>if (UsePretrainedModel)</l>
+<l>    RetrainedModelFileName := 'segment_pill_defects.hdl'</l>
+<l>else</l>
+<l>    RetrainedModelFileName := ExampleDataDir + '/best_dl_model_segmentation.hdl'</l>
+<l>endif</l>
+<l>file_exists (RetrainedModelFileName, ModelExists)</l>
+<l>if (UsePretrainedModel)</l>
+<l>    if (not ModelExists or not PreprocessParamsExist)</l>
+<l>        get_dict_tuple (ExampleInternals, 'window_text', WindowHandleText)</l>
+<l>        dev_set_window (WindowHandleText)</l>
+<c></c>
+<l>        ExceptionText := 'To run this example you need the output of:'</l>
+<l>        ExceptionText[|ExceptionText|] := ' - Deep learning installer, see Installation Guide.'</l>
+<l>        ExceptionText[|ExceptionText|] := ''</l>
+<c>        * Display warning.</c>
+<l>set_display_font (WindowHandleText, 20, 'mono', 'true', 'false')</l>
+<l>        dev_disp_text (ExceptionText, 'window', 'top', 'left', 'red', 'box', 'true')</l>
+<l>        return ()</l>
+<l>    endif</l>
+<l>else</l>
+<l>    if (not ExampleDataDirExists or not ModelExists or not PreprocessParamsExist)</l>
+<l>        ExceptionText := 'To run this example you need the output of:'</l>
+<l>        NumMissing := 0</l>
+<l>        if (not PreprocessParamsExist or not ExampleDataDirExists)</l>
+<l>            ExceptionText[|ExceptionText|] := ' - \'segment_pill_defects_deep_learning_1_preprocess.hdev\''</l>
+<l>            NumMissing := NumMissing + 1</l>
+<l>        endif</l>
+<l>        if (not ModelExists)</l>
+<l>            ExceptionText[|ExceptionText|] := ' - \'segment_pill_defects_deep_learning_2_train.hdev\''</l>
+<l>            NumMissing := NumMissing + 1</l>
+<l>        endif</l>
+<l>        ExceptionText[|ExceptionText|] := ''</l>
+<l>        if (NumMissing == 1)</l>
+<l>            ExceptionText[|ExceptionText|] := 'Please run this example first.'</l>
+<l>        elseif (NumMissing &gt; 1)</l>
+<l>            ExceptionText[|ExceptionText|] := 'Please run these examples first.'</l>
+<l>        endif</l>
+<l>        ExceptionText[|ExceptionText|:|ExceptionText| + 2] := ['Alternatively, you can set \'UsePretrainedModel := true\' ', 'at the top of the example script to use an already trained', 'model shipped with the HALCON installation.']</l>
+<c></c>
+<c>        * Display the warning.</c>
+<l>set_display_font (WindowHandleText, 20, 'mono', 'true', 'false')</l>
+<l>        dev_disp_text (ExceptionText, 'window', 'top', 'left', 'red', 'box', 'true')</l>
+<l>set_display_font (WindowHandleText, 16, 'mono', 'true', 'false')</l>
+<l>        return ()</l>
+<l>    endif</l>
+<l>endif</l>
+<c></c>
+<c>* Set preprocess param file to dict to be read later.</c>
+<l>set_dict_tuple (ExampleInternals, 'preprocess_param_file_name', PreprocessParamFileName)</l>
+<c></c>
+<c>* Reset the open windows for a clean display.</c>
+<l>set_dict_tuple (ExampleInternals, 'window_images_needed', true)</l>
+<l>dev_display_example_reset_windows (ExampleInternals)</l>
+<c></c>
+<c>* Display instruction text.</c>
+<l>get_dict_tuple (ExampleInternals, 'window_text', WindowHandleText)</l>
+<l>dev_set_window (WindowHandleText)</l>
+<c></c>
+<l>Text := 'We now have a trained segmentation model,'</l>
+<l>Text[|Text|] := 'which is ready to be applied to new images.'</l>
+<l>Text[|Text|] := ''</l>
+<l>Text[|Text|] := 'Below, you see a few example images.'</l>
+<l>Text[|Text|] := ''</l>
+<l>Text[|Text|] := 'These images represent newly incoming images,'</l>
+<l>Text[|Text|] := 'i.e., they are not part of the preprocessed dataset.'</l>
+<l>Text[|Text|] := ''</l>
+<l>Text[|Text|] := 'The images have to be preprocessed in the same way as the DLDataset,'</l>
+<l>Text[|Text|] := 'which was used for training.'</l>
+<c></c>
+<l>dev_disp_text (Text, 'window', 'top', 'left', 'black', 'box', 'true')</l>
+<l>dev_disp_text ('Press Run (F5) to continue', 'window', 'bottom', 'right', 'black', 'box', 'true')</l>
+<c></c>
+<c>* Display example images.</c>
+<l>get_dict_tuple (ExampleInternals, 'window_images', WindowHandleImages)</l>
+<l>dev_set_window (WindowHandleImages)</l>
+<l>dev_display_pills_example_dataset_preview ()</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="dev_display_screen_example_images">
+<parameters>
+<parameter id="ExampleInternals">
+<default_type>integer</default_type>
+<mixed_type>false</mixed_type>
+<sem_type>dict</sem_type>
+<type_list>
+<item>integer</item>
+</type_list>
+</parameter>
+<parameter id="UsePretrainedModel"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_example_init">
+<interface>
+<ic>
+<par name="ShowExampleScreens" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<c>* This procedure initializes the graphic windows that are used for explanations during the example.</c>
+<c></c>
+<c>* A dict that will be used/adapted by other example procedures.</c>
+<l>create_dict (ExampleInternals)</l>
+<l>set_dict_tuple (ExampleInternals, 'show_example_screens', ShowExampleScreens)</l>
+<l>if (not ShowExampleScreens)</l>
+<l>    return ()</l>
+<l>endif</l>
+<c></c>
+<l>dev_close_window ()</l>
+<l>dev_open_example_text_window (ExampleInternals)</l>
+<c></c>
+<l>set_dict_tuple (ExampleInternals, 'window_images_needed', false)</l>
+<l>set_dict_tuple (ExampleInternals, 'window_legend_needed', false)</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="dev_example_init">
+<parameters>
+<parameter id="ExampleInternals"/>
+<parameter id="ShowExampleScreens">
+<default_type>integer</default_type>
+<default_value>0</default_value>
+<description lang="en_US">A boolean that is used to enable/disable explanation screens in this example</description>
+<multivalue>false</multivalue>
+<sem_type>string</sem_type>
+<type_list>
+<item>integer</item>
+</type_list>
+<value_max>1</value_max>
+<value_min>0</value_min>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_display_preprocessed_image">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure displays an example of a preprocessed image.</c>
+<c></c>
+<c>* Read image.</c>
+<l>read_image (Image, 'pill/ginseng/contamination/pill_ginseng_contamination_007.png')</l>
+<c></c>
+<c>* Preprocess image.</c>
+<l>get_dict_tuple (ExampleInternals, 'preprocess_param_file_name', PreprocessParamFileName)</l>
+<l>read_dict (PreprocessParamFileName, [], [], DLPreprocessParam)</l>
+<c></c>
+<l>preprocess_dl_model_images (Image, Image, DLPreprocessParam)</l>
+<l>set_dict_object (Image, ExampleInternals, 'preprocessed_image')</l>
+<c></c>
+<c>* Display preprocessed image.</c>
+<l>dev_set_part (0, 0, 400, 400)</l>
+<l>dev_display (Image)</l>
+<l>dev_disp_text ('Preprocessed image', 'window', 'top', 'left', 'black', [], [])</l>
+<l>return ()</l>
+</body>
+<docu id="dev_display_preprocessed_image">
+<parameters>
+<parameter id="ExampleInternals"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="check_data_availability">
+<interface>
+<ic>
+<par name="ExampleDataDir" base_type="ctrl" dimension="0"/>
+<par name="PreprocessParamFileName" base_type="ctrl" dimension="0"/>
+<par name="TrainedModelFileName" base_type="ctrl" dimension="0"/>
+<par name="UsePretrainedModel" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure checks if all necessary files are available.</c>
+<c></c>
+<l>file_exists (ExampleDataDir, FileExists)</l>
+<l>Example1 := 'segment_pill_defects_deep_learning_1_preprocess.hdev'</l>
+<l>Example2 := 'segment_pill_defects_deep_learning_2_train.hdev'</l>
+<l>if (not FileExists)</l>
+<l>    throw (ExampleDataDir + ' does not exist. Please run ' + Example1 + ' and ' + Example2 + ' of example series.')</l>
+<l>endif</l>
+<c></c>
+<l>file_exists (PreprocessParamFileName, FileExists)</l>
+<l>if (not FileExists)</l>
+<l>    throw (PreprocessParamFileName + ' does not exist. Please run ' + Example1 + ' of example series.')</l>
+<l>endif</l>
+<c></c>
+<l>file_exists (TrainedModelFileName, FileExists)</l>
+<l>if (not FileExists)</l>
+<l>    if (UsePretrainedModel)</l>
+<l>        throw (TrainedModelFileName + ' does not exist. Please run the HALCON Deep Learning installer.')</l>
+<l>    else</l>
+<l>        throw (TrainedModelFileName + ' does not exist. Please run ' + Example2 + ' of example series.')</l>
+<l>    endif</l>
+<l>endif</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="check_data_availability">
+<parameters>
+<parameter id="ExampleDataDir"/>
+<parameter id="PreprocessParamFileName"/>
+<parameter id="TrainedModelFileName"/>
+<parameter id="UsePretrainedModel"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_display_screen_ready_to_infer">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure informs, that the execution will start in the next step</c>
+<c>* and what will be done.</c>
+<l>get_dict_tuple (ExampleInternals, 'show_example_screens', ShowExampleScreens)</l>
+<l>if (not ShowExampleScreens)</l>
+<l>    return ()</l>
+<l>endif</l>
+<c></c>
+<c>* Reset the open windows for a clean display.</c>
+<l>set_dict_tuple (ExampleInternals, 'window_images_needed', false)</l>
+<l>set_dict_tuple (ExampleInternals, 'window_legend_needed', false)</l>
+<l>dev_display_example_reset_windows (ExampleInternals)</l>
+<c></c>
+<l>get_dict_tuple (ExampleInternals, 'window_text', WindowHandleText)</l>
+<l>dev_set_window (WindowHandleText)</l>
+<c></c>
+<c>* Display instruction text.</c>
+<l>Text := 'We will now apply the trained model from example part 2 '</l>
+<l>Text[|Text|] := '(segment_pill_defects_deep_learning_2_train.hdev)'</l>
+<l>Text[|Text|] := 'to some new images using \'apply_dl_model\'.'</l>
+<l>Text[|Text|] := ''</l>
+<l>Text[|Text|] := 'Additionally, we apply postprocessing steps to the'</l>
+<l>Text[|Text|] := 'output segmentation image:'</l>
+<l>Text[|Text|] := ' 1. Get a segmented region for each class.'</l>
+<l>Text[|Text|] := ' 2. Split the segmented regions into connected components.'</l>
+<l>Text[|Text|] := ' 3. Compute the area of each defect instance.'</l>
+<l>Text[|Text|] := ''</l>
+<l>Text[|Text|] := 'The final result will be displayed for each image.'</l>
+<c></c>
+<l>dev_disp_text (Text, 'window', 'top', 'left', 'black', 'box', 'true')</l>
+<c></c>
+<l>dev_disp_text ('Press Run (F5) to continue', 'window', 'bottom', 'right', 'black', 'box', 'true')</l>
+<c></c>
+<l>set_dict_tuple (ExampleInternals, 'window_handles_to_close', WindowHandleText)</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="dev_display_screen_ready_to_infer">
+<parameters>
+<parameter id="ExampleInternals">
+<default_type>integer</default_type>
+<mixed_type>false</mixed_type>
+<sem_type>dict</sem_type>
+<type_list>
+<item>integer</item>
+</type_list>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_display_example_reset_windows">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure resets the graphics windows.</c>
+<c></c>
+<c>* Close any windows that are listed in key 'window_handles_to_close'.</c>
+<l>try</l>
+<l>    get_dict_tuple (ExampleInternals, 'window_handles_to_close', WindowHandlesToClose)</l>
+<l>catch (Exception)</l>
+<l>    WindowHandlesToClose := []</l>
+<l>endtry</l>
+<l>for I := 0 to |WindowHandlesToClose| - 1 by 1</l>
+<l>    dev_set_window (WindowHandlesToClose[I])</l>
+<l>    dev_close_window ()</l>
+<l>endfor</l>
+<l>set_dict_tuple (ExampleInternals, 'window_handles_to_close', [])</l>
+<c></c>
+<c>* Open image window if needed.</c>
+<l>get_dict_param (ExampleInternals, 'keys', [], WindowHandleKeys)</l>
+<l>tuple_find (WindowHandleKeys, 'window_images', Index)</l>
+<l>get_dict_tuple (ExampleInternals, 'window_images_needed', WindowImagesNeeded)</l>
+<l>if (WindowImagesNeeded and Index == -1)</l>
+<c>    * Open new window for images.</c>
+<l>dev_open_example_image_window (ExampleInternals)</l>
+<l>elseif (not WindowImagesNeeded and Index != -1)</l>
+<c>    * Window for images exists but is not needed -&gt; close it.</c>
+<l>    get_dict_tuple (ExampleInternals, 'window_images', WindowHandleImages)</l>
+<l>    dev_set_window (WindowHandleImages)</l>
+<l>    dev_close_window ()</l>
+<c>    * Delete key.</c>
+<l>    remove_dict_key (ExampleInternals, 'window_images')</l>
+<l>endif</l>
+<c></c>
+<c>* Open legend window if needed</c>
+<l>get_dict_param (ExampleInternals, 'keys', [], WindowHandleKeys)</l>
+<l>tuple_find (WindowHandleKeys, 'window_legend', Index)</l>
+<l>get_dict_tuple (ExampleInternals, 'window_legend_needed', WindowLegendNeeded)</l>
+<l>if (WindowLegendNeeded and Index == -1)</l>
+<c>    * Open new window for legend</c>
+<l>dev_open_example_legend_window (ExampleInternals, 280)</l>
+<l>elseif (not WindowLegendNeeded and Index != -1)</l>
+<c>    * Window for legend exists but is not needed -&gt; close it</c>
+<l>dev_close_example_legend_window (ExampleInternals)</l>
+<l>endif</l>
+<c></c>
+<c></c>
+<c>* Set the correct area (part) of the image window.</c>
+<l>try</l>
+<l>    get_dict_tuple (ExampleInternals, 'window_images', WindowHandleImages)</l>
+<l>    dev_set_window (WindowHandleImages)</l>
+<l>    dev_clear_window ()</l>
+<c>    * Set default window extents</c>
+<l>    dev_set_window_extents (360, 0, 500, 500)</l>
+<l>    dev_set_part (1, 1, -1, -1)</l>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<c>* Set the correct area (part) of the legend window.</c>
+<l>try</l>
+<l>    get_dict_tuple (ExampleInternals, 'window_legend', WindowHandleLegend)</l>
+<l>    dev_set_window (WindowHandleLegend)</l>
+<l>    dev_clear_window ()</l>
+<l>    dev_set_part (1, 1, -1, -1)</l>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<c></c>
+<l>get_dict_tuple (ExampleInternals, 'window_text', WindowHandleText)</l>
+<l>dev_set_window (WindowHandleText)</l>
+<l>dev_clear_window ()</l>
+<l>return ()</l>
+<c></c>
+</body>
+<docu id="dev_display_example_reset_windows">
+<parameters>
+<parameter id="ExampleInternals">
+<default_type>integer</default_type>
+<mixed_type>false</mixed_type>
+<sem_type>dict</sem_type>
+<type_list>
+<item>integer</item>
+</type_list>
+</parameter>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_display_screen_inference_step_2">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure explains the preprocessing step during inference.</c>
+<c></c>
+<l>get_dict_tuple (ExampleInternals, 'show_example_screens', ShowExampleScreens)</l>
+<l>if (not ShowExampleScreens)</l>
+<l>    return ()</l>
+<l>endif</l>
+<c></c>
+<c>* Reset the open windows for a clean display.</c>
+<l>set_dict_tuple (ExampleInternals, 'window_images_needed', true)</l>
+<l>dev_display_example_reset_windows (ExampleInternals)</l>
+<c></c>
+<l>get_dict_tuple (ExampleInternals, 'window_text', WindowHandleText)</l>
+<l>dev_set_window (WindowHandleText)</l>
+<c></c>
+<c>* Display second part of inference instruction.</c>
+<l>Text := 'Inference steps for one image:'</l>
+<l>Text[|Text|] := ''</l>
+<l>Text[|Text|] := '1. Generate a DLSample for the image'</l>
+<l>Text[|Text|] := '   using the procedure \'gen_dl_samples_from_images\'.'</l>
+<l>Text[|Text|] := ''</l>
+<l>Text[|Text|] := '2. Preprocess the image to fulfill the requirements of the trained model'</l>
+<l>Text[|Text|] := '   using the procedure \'preprocess_dl_samples\'.'</l>
+<c></c>
+<l>dev_disp_text (Text, 'window', 'top', 'left', 'black', 'box', 'true')</l>
+<l>dev_disp_text ('Press Run (F5) to continue', 'window', 'bottom', 'right', 'black', 'box', 'true')</l>
+<c></c>
+<c>* Display preprocessed image.</c>
+<l>get_dict_tuple (ExampleInternals, 'window_images', WindowHandleImages)</l>
+<l>dev_set_window (WindowHandleImages)</l>
+<l>dev_display_preprocessed_image (ExampleInternals)</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="dev_display_screen_inference_step_2">
+<parameters>
+<parameter id="ExampleInternals"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_display_raw_image">
+<interface>
+<ic>
+<par name="WindowHandleImages" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure displays a raw image as inserted into the sample.</c>
+<c></c>
+<l>dev_set_window (WindowHandleImages)</l>
+<c>* Read image and fit the window handle.</c>
+<l>read_image (Image, 'pill/ginseng/contamination/pill_ginseng_contamination_007.png')</l>
+<c></c>
+<l>get_image_size (Image, Width, Height)</l>
+<l>get_window_extents (WindowHandleImages, Row, Column, Width1, Height1)</l>
+<c></c>
+<l>if (Height &lt; Width)</l>
+<l>    ZoomFactor := Width1 / real(Width)</l>
+<l>else</l>
+<l>    ZoomFactor := Height1 / real(Height)</l>
+<l>endif</l>
+<l>zoom_image_factor (Image, Image, ZoomFactor, ZoomFactor, 'bilinear')</l>
+<c></c>
+<l>dev_set_window_extents (360, 0, ZoomFactor * Width, ZoomFactor * Height)</l>
+<l>dev_display (Image)</l>
+<l>dev_set_part (1, 1, -1, -1)</l>
+<l>dev_display (Image)</l>
+<c></c>
+<l>dev_disp_text ('Raw image', 'window', 'top', 'left', 'black', [], [])</l>
+<l>return ()</l>
+</body>
+<docu id="dev_display_raw_image">
+<parameters>
+<parameter id="WindowHandleImages"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_display_screen_inference_step_3">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure visualizes the apply step.</c>
+<c></c>
+<l>get_dict_tuple (ExampleInternals, 'show_example_screens', ShowExampleScreens)</l>
+<l>if (not ShowExampleScreens)</l>
+<l>    return ()</l>
+<l>endif</l>
+<c></c>
+<c>* Reset the open windows for a clean display.</c>
+<l>set_dict_tuple (ExampleInternals, 'window_images_needed', true)</l>
+<l>dev_display_example_reset_windows (ExampleInternals)</l>
+<c></c>
+<l>get_dict_tuple (ExampleInternals, 'window_text', WindowHandleText)</l>
+<l>dev_set_window (WindowHandleText)</l>
+<c></c>
+<c>* Display third part of inference instruction.</c>
+<l>Text := 'Inference steps for one image:'</l>
+<l>Text[|Text|] := ''</l>
+<l>Text[|Text|] := '1. Generate a DLSample for the image'</l>
+<l>Text[|Text|] := '   using the procedure \'gen_dl_samples_from_images\'.'</l>
+<l>Text[|Text|] := ''</l>
+<l>Text[|Text|] := '2. Preprocess the image to fulfill the requirements of the trained model'</l>
+<l>Text[|Text|] := '   using the procedure \'preprocess_dl_samples\'.'</l>
+<l>Text[|Text|] := ''</l>
+<l>Text[|Text|] := '3. Apply the model using the operator \'apply_dl_model\'.'</l>
+<c></c>
+<l>dev_disp_text (Text, 'window', 'top', 'left', 'black', 'box', 'true')</l>
+<l>dev_disp_text ('Press Run (F5) to continue', 'window', 'bottom', 'right', 'black', 'box', 'true')</l>
+<c></c>
+<c>* Display output image of the model.</c>
+<l>get_dict_tuple (ExampleInternals, 'window_images', WindowHandleImages)</l>
+<l>dev_set_window (WindowHandleImages)</l>
+<l>dev_display_model_output_image (ExampleInternals)</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="dev_display_screen_inference_step_3">
+<parameters>
+<parameter id="ExampleInternals"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_display_screen_inference_step_1">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure explains the step of sample generation.</c>
+<c></c>
+<l>get_dict_tuple (ExampleInternals, 'show_example_screens', ShowExampleScreens)</l>
+<l>if (not ShowExampleScreens)</l>
+<l>    return ()</l>
+<l>endif</l>
+<c></c>
+<c>* Reset the open windows for a clean display.</c>
+<l>set_dict_tuple (ExampleInternals, 'window_images_needed', true)</l>
+<l>dev_display_example_reset_windows (ExampleInternals)</l>
+<c></c>
+<l>get_dict_tuple (ExampleInternals, 'window_text', WindowHandleText)</l>
+<l>dev_set_window (WindowHandleText)</l>
+<c></c>
+<c>* Display first part of inference instruction.</c>
+<l>Text := 'Inference steps for one image:'</l>
+<l>Text[|Text|] := ''</l>
+<l>Text[|Text|] := '1. Generate a DLSample for the image'</l>
+<l>Text[|Text|] := '   using the procedure \'gen_dl_samples_from_images\'.'</l>
+<c></c>
+<l>dev_disp_text (Text, 'window', 'top', 'left', 'black', 'box', 'true')</l>
+<l>dev_disp_text ('Press Run (F5) to continue', 'window', 'bottom', 'right', 'black', 'box', 'true')</l>
+<c></c>
+<c>* Display raw image.</c>
+<l>get_dict_tuple (ExampleInternals, 'window_images', WindowHandleImages)</l>
+<l>dev_display_raw_image (WindowHandleImages)</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="dev_display_screen_inference_step_1">
+<parameters>
+<parameter id="ExampleInternals"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_display_model_output_image">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure visualizes the output of a segmentation model,</c>
+<c>* by displaying a segmentation image.</c>
+<c></c>
+<c>* Read the preprocessed image.</c>
+<l>read_image (Image, 'pill/ginseng/contamination/pill_ginseng_contamination_007.png')</l>
+<l>read_image (SegImage, 'labels/pill/ginseng/contamination/pill_ginseng_contamination_007_gt.png')</l>
+<c>* Preprocess the segmentation image.</c>
+<l>get_dict_tuple (ExampleInternals, 'preprocess_param_file_name', PreprocessParamFileName)</l>
+<l>read_dict (PreprocessParamFileName, [], [], DLPreprocessParam)</l>
+<l>preprocess_dl_model_segmentations (Image, SegImage, SegImage, DLPreprocessParam)</l>
+<c></c>
+<c>* Display segmentation image.</c>
+<l>dev_display (SegImage)</l>
+<l>dev_disp_text ('Segmentation image \n(output of \'apply_dl_model\')', 'window', 'top', 'left', 'black', [], [])</l>
+<c></c>
+<c>* Write segmentation image to file.</c>
+<l>set_dict_object (SegImage, ExampleInternals, 'segmentation_image')</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="dev_display_model_output_image">
+<parameters>
+<parameter id="ExampleInternals"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_display_screen_introduction">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure shows an overview on all example parts.</c>
+<c></c>
+<l>get_dict_tuple (ExampleInternals, 'show_example_screens', ShowExampleScreens)</l>
+<l>if (not ShowExampleScreens)</l>
+<l>    return ()</l>
+<l>endif</l>
+<c></c>
+<c>* Reset the open windows for a clean display.</c>
+<l>set_dict_tuple (ExampleInternals, 'window_images_needed', false)</l>
+<l>dev_display_example_reset_windows (ExampleInternals)</l>
+<c></c>
+<l>get_dict_tuple (ExampleInternals, 'window_text', WindowHandleText)</l>
+<l>dev_set_window (WindowHandleText)</l>
+<c></c>
+<c>* Display introduction text.</c>
+<l>Text := 'This example is part of a series of examples, which summarize '</l>
+<l>Text[|Text|] := 'the workflow for DL segmentation.'</l>
+<l>Text[|Text|] := ''</l>
+<l>Text[|Text|] := 'The four parts are: '</l>
+<l>Text[|Text|] := '1. Dataset preprocessing.'</l>
+<l>Text[|Text|] := '2. Training of the model.'</l>
+<l>Text[|Text|] := '3. Evaluation of the trained model.'</l>
+<l>Text[|Text|] := '4. Inference on new images.'</l>
+<l>Text[|Text|] := ''</l>
+<l>Text[|Text|] := 'This example covers part 4: \'Inference on new images\'.'</l>
+<c></c>
+<l>dev_disp_text (Text, 'window', 'top', 'left', 'black', 'box', 'true')</l>
+<c></c>
+<l>dev_disp_text ('Press Run (F5) to continue', 'window', 'bottom', 'right', 'black', 'box', 'true')</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="dev_display_screen_introduction">
+<parameters>
+<parameter id="ExampleInternals"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_display_segmented_regions">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure displays an example of extracted regions.</c>
+<c></c>
+<c>* Get preprocessed image and segmentation image.</c>
+<l>get_dict_object (Image, ExampleInternals, 'preprocessed_image')</l>
+<l>get_dict_object (SegImage, ExampleInternals, 'segmentation_image')</l>
+<c></c>
+<c>* Get defect region and compute its area.</c>
+<l>threshold (SegImage, Defect, 1, 1)</l>
+<l>area_center (Defect, Area, Row, Column)</l>
+<c></c>
+<c>* Display the image with overlayed regions.</c>
+<c>* Dataset info.</c>
+<l>create_dict (Info)</l>
+<l>ClassIDs := [0, 1, 2]</l>
+<l>ClassNames := ['good', 'contamination', 'crack']</l>
+<l>set_dict_tuple (Info, 'class_ids', ClassIDs)</l>
+<l>set_dict_tuple (Info, 'class_names', ClassNames)</l>
+<c>* Sample.</c>
+<l>create_dict (Sample)</l>
+<l>set_dict_object (Image, Sample, 'image')</l>
+<c>* Result.</c>
+<l>create_dict (Result)</l>
+<l>set_dict_object (SegImage, Result, 'segmentation_image')</l>
+<c>* GenParam.</c>
+<l>create_dict (GenParam)</l>
+<l>set_dict_tuple (GenParam, 'segmentation_exclude_class_ids', 0)</l>
+<l>set_dict_tuple (GenParam, 'segmentation_transparency', '80')</l>
+<l>set_dict_tuple (GenParam, 'font_size', 16)</l>
+<c>* WindowHandleDict.</c>
+<l>create_dict (WindowHandleDict)</l>
+<l>get_dict_tuple (ExampleInternals, 'window_images', WindowHandleImages)</l>
+<l>get_dict_tuple (ExampleInternals, 'window_legend', WindowHandleLegend)</l>
+<l>set_dict_tuple (WindowHandleDict, 'segmentation_image_result', [WindowHandleImages,WindowHandleLegend])</l>
+<c>* Display results.</c>
+<l>dev_display_dl_data (Sample, Result, Info, 'segmentation_image_result', GenParam, WindowHandleDict)</l>
+<c></c>
+<c>* Display area.</c>
+<l>get_dict_tuple (WindowHandleDict, 'segmentation_image_result', WindowHandles)</l>
+<l>dev_set_window (WindowHandles[0])</l>
+<l>dev_disp_text (ClassNames[1] + '\narea: ' + Area + 'px', 'image', Row - 10, Column + 10, 'black', [], [])</l>
+<l>dev_disp_text ('Segmented defect regions', 'window', 'top', 'left', 'black', [], [])</l>
+<l>flush_buffer (WindowHandles[0])</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="dev_display_segmented_regions">
+<parameters>
+<parameter id="ExampleInternals"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_display_screen_inference_step_4">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure lists the postprocessing as step and displays an example.</c>
+<c></c>
+<l>get_dict_tuple (ExampleInternals, 'show_example_screens', ShowExampleScreens)</l>
+<l>if (not ShowExampleScreens)</l>
+<l>    return ()</l>
+<l>endif</l>
+<c></c>
+<c>* Reset the open windows for a clean display.</c>
+<l>set_dict_tuple (ExampleInternals, 'window_images_needed', true)</l>
+<l>set_dict_tuple (ExampleInternals, 'window_legend_needed', true)</l>
+<l>dev_display_example_reset_windows (ExampleInternals)</l>
+<c></c>
+<l>get_dict_tuple (ExampleInternals, 'window_text', WindowHandleText)</l>
+<l>dev_set_window (WindowHandleText)</l>
+<c></c>
+<c>* Display fourth part of inference instruction.</c>
+<l>Text := 'Inference steps for one image:'</l>
+<l>Text[|Text|] := ''</l>
+<l>Text[|Text|] := '1. Generate a DLSample for the image'</l>
+<l>Text[|Text|] := '   using the procedure \'gen_dl_samples_from_images\'.'</l>
+<l>Text[|Text|] := ''</l>
+<l>Text[|Text|] := '2. Preprocess the image to fulfill the requirements of the trained model'</l>
+<l>Text[|Text|] := '   using the procedure \'preprocess_dl_samples\'.'</l>
+<l>Text[|Text|] := ''</l>
+<l>Text[|Text|] := '3. Apply the model using the operator \'apply_dl_model\'.'</l>
+<l>Text[|Text|] := ''</l>
+<l>Text[|Text|] := '4. Postprocess the output segmentation image'</l>
+<l>Text[|Text|] := '   to get segmented regions for each class.'</l>
+<l>Text[|Text|] := ''</l>
+<l>dev_disp_text (Text, 'window', 'top', 'left', 'black', 'box', 'true')</l>
+<l>dev_disp_text ('Press Run (F5) to continue', 'window', 'bottom', 'right', 'black', 'box', 'true')</l>
+<c></c>
+<c>* Display segmented regions.</c>
+<l>get_dict_tuple (ExampleInternals, 'window_images', WindowHandleImages)</l>
+<l>dev_set_window (WindowHandleImages)</l>
+<l>dev_display_segmented_regions (ExampleInternals)</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="dev_display_screen_inference_step_4">
+<parameters>
+<parameter id="ExampleInternals"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_display_pills_example_dataset_preview">
+<interface/>
+<body>
+<c>* This procedure displays a selection of pill images.</c>
+<c></c>
+<l>try</l>
+<c>    * Read some example images.</c>
+<l>    GinsengPath := 'pill/ginseng/' + ['good/pill_ginseng_good_001', 'contamination/pill_ginseng_contamination_004', 'crack/pill_ginseng_crack_001']</l>
+<l>    MagnesiumPath := 'pill/magnesium/' + ['good/pill_magnesium_good_001', 'contamination/pill_magnesium_contamination_001', 'crack/pill_magnesium_crack_001']</l>
+<l>    MintPath := 'pill/mint/' + ['good/pill_mint_good_001', 'contamination/pill_mint_contamination_001', 'crack/pill_mint_crack_009']</l>
+<l>    read_image (Image, [GinsengPath,MagnesiumPath,MintPath])</l>
+<l>    tile_images (Image, TiledImage, 3, 'horizontal')</l>
+<c>    * Generate background image.</c>
+<l>    get_image_size (TiledImage, Width, Height)</l>
+<l>    gen_image_proto (TiledImage, ImageR, 18)</l>
+<l>    gen_image_proto (TiledImage, ImageG, 22)</l>
+<l>    gen_image_proto (TiledImage, ImageB, 28)</l>
+<l>    append_channel (ImageR, ImageG, ImageRG)</l>
+<l>    append_channel (ImageRG, ImageB, ImageRGB)</l>
+<c>    * Display the background and the images.</c>
+<l>    dev_set_window_extents (360, 0, 800, 400)</l>
+<l>    get_image_size (ImageRGB, Width1, Height1)</l>
+<l>    dev_set_part (0, 0, Height1, Width1)</l>
+<l>    dev_display (ImageRGB)</l>
+<l>    dev_display (TiledImage)</l>
+<l>catch (Exception)</l>
+<c>    * If the example image files are not found, an error message is displayed.</c>
+<l>    ErrorAndAdviceText := 'The images required for this example could not be found.'</l>
+<l>    ErrorAndAdviceText := [ErrorAndAdviceText,'']</l>
+<l>    ErrorAndAdviceText := [ErrorAndAdviceText,'These images are part of a separate installer. Please']</l>
+<l>    ErrorAndAdviceText := [ErrorAndAdviceText,'refer to the Installation Guide for more information on']</l>
+<l>    ErrorAndAdviceText := [ErrorAndAdviceText,'this topic!']</l>
+<l>    dev_clear_window ()</l>
+<l>    dev_disp_text (ErrorAndAdviceText, 'window', 'center', 'left', 'red', [], [])</l>
+<l>endtry</l>
+<l>return ()</l>
+</body>
+<docu id="dev_display_pills_example_dataset_preview">
+<parameters/>
+</docu>
+</procedure>
+<procedure name="get_inference_images">
+<interface>
+<ic>
+<par name="ImageDir" base_type="ctrl" dimension="0"/>
+</ic>
+<oc>
+<par name="ImageFiles" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<c>* This procedure selects some images for the demonstration purposes of this example.</c>
+<c></c>
+<l>ImageFiles := ImageDir + '/ginseng/contamination/pill_ginseng_contamination_154'</l>
+<l>ImageFiles[|ImageFiles|] := ImageDir + '/magnesium/crack/pill_magnesium_crack_036'</l>
+<l>ImageFiles[|ImageFiles|] := ImageDir + '/mint/good/pill_mint_good_165'</l>
+<l>ImageFiles[|ImageFiles|] := ImageDir + '/ginseng/crack/pill_ginseng_crack_004'</l>
+<l>ImageFiles[|ImageFiles|] := ImageDir + '/magnesium/good/pill_magnesium_good_066'</l>
+<l>ImageFiles[|ImageFiles|] := ImageDir + '/ginseng/contamination/pill_ginseng_contamination_244'</l>
+<l>ImageFiles[|ImageFiles|] := ImageDir + '/mint/contamination/pill_mint_contamination_076'</l>
+<l>ImageFiles[|ImageFiles|] := ImageDir + '/magnesium/contamination/pill_magnesium_contamination_011'</l>
+<l>ImageFiles[|ImageFiles|] := ImageDir + '/ginseng/good/pill_ginseng_good_042'</l>
+<l>ImageFiles[|ImageFiles|] := ImageDir + '/mint/crack/pill_mint_crack_121'</l>
+<l>return ()</l>
+</body>
+<docu id="get_inference_images">
+<parameters>
+<parameter id="ImageDir"/>
+<parameter id="ImageFiles"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_open_example_image_window">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure initializes the graphic windows that are used to display example images.</c>
+<c></c>
+<l>WindowHeightText := 300</l>
+<l>WindowWidthImage := 500</l>
+<l>WindowHeightImages := 500</l>
+<l>WindowBGColor := 'black'</l>
+<c></c>
+<l>WindowYImages := WindowHeightText + 60</l>
+<l>WindowXImages := 0</l>
+<l>dev_open_window (WindowYImages, WindowXImages, WindowWidthImage, WindowHeightImages, WindowBGColor, WindowHandleImages)</l>
+<l>set_display_font (WindowHandleImages, 16, 'mono', 'true', 'false')</l>
+<l>set_dict_tuple (ExampleInternals, 'window_images', WindowHandleImages)</l>
+<l>set_dict_tuple (ExampleInternals, 'window_images_width', WindowWidthImage)</l>
+<l>set_dict_tuple (ExampleInternals, 'window_images_height', WindowHeightImages)</l>
+<l>set_dict_tuple (ExampleInternals, 'window_images_x', WindowXImages)</l>
+<l>set_dict_tuple (ExampleInternals, 'window_images_y', WindowYImages)</l>
+<l>return ()</l>
+</body>
+<docu id="dev_open_example_image_window">
+<parameters>
+<parameter id="ExampleInternals"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_close_example_legend_window">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure closes the legend window.</c>
+<c></c>
+<l>try</l>
+<l>    get_dict_tuple (ExampleInternals, 'window_legend', WindowHandleLegend)</l>
+<l>    dev_set_window (WindowHandleLegend)</l>
+<l>    dev_close_window ()</l>
+<c>    * Delete key.</c>
+<l>    remove_dict_key (ExampleInternals, 'window_legend')</l>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="dev_close_example_legend_window">
+<parameters>
+<parameter id="ExampleInternals"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_open_example_text_window">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<l>WindowWidthText := 800</l>
+<l>WindowHeightText := 300</l>
+<l>WindowBGColor := 'gray'</l>
+<l>dev_open_window (0, 0, WindowWidthText, WindowHeightText, WindowBGColor, WindowHandleText)</l>
+<l>set_display_font (WindowHandleText, 16, 'mono', 'true', 'false')</l>
+<l>set_dict_tuple (ExampleInternals, 'window_text', WindowHandleText)</l>
+<l>set_dict_tuple (ExampleInternals, 'window_text_width', WindowWidthText)</l>
+<l>set_dict_tuple (ExampleInternals, 'window_text_height', WindowHeightText)</l>
+<l>return ()</l>
+</body>
+<docu id="dev_open_example_text_window">
+<parameters>
+<parameter id="ExampleInternals"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_close_example_windows">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure closes all example windows.</c>
+<c></c>
+<l>get_dict_tuple (ExampleInternals, 'show_example_screens', ShowExampleScreens)</l>
+<l>if (not ShowExampleScreens)</l>
+<l>    return ()</l>
+<l>endif</l>
+<c></c>
+<l>dev_close_example_text_window (ExampleInternals)</l>
+<l>dev_close_example_image_window (ShowExampleScreens)</l>
+<l>dev_close_example_legend_window (ShowExampleScreens)</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="dev_close_example_windows">
+<parameters>
+<parameter id="ExampleInternals"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_close_example_image_window">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure closes the image window.</c>
+<c></c>
+<l>try</l>
+<l>    get_dict_tuple (ExampleInternals, 'window_images', WindowHandleImages)</l>
+<l>    dev_set_window (WindowHandleImages)</l>
+<l>    dev_close_window ()</l>
+<c>    * Delete key.</c>
+<l>    remove_dict_key (ExampleInternals, 'window_images')</l>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="dev_close_example_image_window">
+<parameters>
+<parameter id="ExampleInternals"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_close_example_text_window">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure closes the text window.</c>
+<c></c>
+<l>try</l>
+<l>    get_dict_tuple (ExampleInternals, 'window_text', WindowHandleImages)</l>
+<l>    dev_set_window (WindowHandleImages)</l>
+<l>    dev_close_window ()</l>
+<c>    * Delete key.</c>
+<l>    remove_dict_key (ExampleInternals, 'window_text')</l>
+<l>catch (Exception)</l>
+<l>endtry</l>
+<l>return ()</l>
+</body>
+<docu id="dev_close_example_text_window">
+<parameters>
+<parameter id="ExampleInternals"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_open_example_legend_window">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+<par name="WindowWidth" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure initializes the graphic windows that are used to display a legend.</c>
+<c></c>
+<l>get_dict_tuple (ExampleInternals, 'window_images_height', WindowImagesHeight)</l>
+<l>get_dict_tuple (ExampleInternals, 'window_images_width', WindowImagesWidth)</l>
+<l>get_dict_tuple (ExampleInternals, 'window_images_x', WindowImagesX)</l>
+<l>get_dict_tuple (ExampleInternals, 'window_images_y', WindowImagesY)</l>
+<l>dev_open_window (WindowImagesY, WindowImagesX + WindowImagesWidth + 5, WindowWidth, WindowImagesHeight, 'black', WindowHandleLegend)</l>
+<l>set_display_font (WindowHandleLegend, 14, 'mono', 'true', 'false')</l>
+<l>set_dict_tuple (ExampleInternals, 'window_legend', WindowHandleLegend)</l>
+<l>return ()</l>
+</body>
+<docu id="dev_open_example_legend_window">
+<parameters>
+<parameter id="ExampleInternals"/>
+<parameter id="WindowWidth"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="dev_display_screen_device">
+<interface>
+<ic>
+<par name="ExampleInternals" base_type="ctrl" dimension="0"/>
+<par name="DLDevice" base_type="ctrl" dimension="0"/>
+</ic>
+</interface>
+<body>
+<c>* This procedure displays information about the used device.</c>
+<c></c>
+<c>* Reset the open windows for a clean display.</c>
+<l>set_dict_tuple (ExampleInternals, 'window_images_needed', false)</l>
+<l>set_dict_tuple (ExampleInternals, 'window_legend_needed', false)</l>
+<l>dev_display_example_reset_windows (ExampleInternals)</l>
+<c></c>
+<c>* Display the explanatory text.</c>
+<l>get_dict_tuple (ExampleInternals, 'window_text', WindowHandleText)</l>
+<l>dev_set_window (WindowHandleText)</l>
+<c></c>
+<l>get_dl_device_param (DLDevice, 'type', DLDeviceType)</l>
+<l>get_dl_device_param (DLDevice, 'name', DLDeviceName)</l>
+<c></c>
+<l>Text := 'This example can be run on any deep learning device.'</l>
+<l>Text[|Text|] := ''</l>
+<l>if (DLDeviceType != 'gpu')</l>
+<l>    Text[|Text|] := 'No GPU with necessary drivers and libraries has been found.'</l>
+<l>    Text[|Text|] := ''</l>
+<l>endif</l>
+<l>Text[|Text|] := 'This example will run the deep learning operators'</l>
+<l>Text[|Text|] := 'on the following device:'</l>
+<l>Text[|Text|] := 'Device type: ' + DLDeviceType</l>
+<l>Text[|Text|] := 'Device name: ' + DLDeviceName</l>
+<c></c>
+<l>dev_disp_text (Text, 'window', 'top', 'left', 'black', 'box', 'true')</l>
+<l>dev_disp_text ('Press Run (F5) to continue', 'window', 'bottom', 'right', 'black', [], [])</l>
+<c></c>
+<l>return ()</l>
+</body>
+<docu id="dev_display_screen_device">
+<abstract lang="en_US">Display a message to mention on which device the deep learning operators will run.</abstract>
+<parameters>
+<parameter id="DLDevice"/>
+<parameter id="ExampleInternals"/>
+</parameters>
+</docu>
+</procedure>
+<procedure name="init">
+<interface>
+<oc>
+<par name="DLModelHandle" base_type="ctrl" dimension="0"/>
+<par name="ClassNames" base_type="ctrl" dimension="0"/>
+<par name="ClassIDs" base_type="ctrl" dimension="0"/>
+<par name="DLPreprocessParam" base_type="ctrl" dimension="0"/>
+</oc>
+</interface>
+<body>
+<l>PreprocessParamFileName := 'logs/segment_pill_defects_preprocess_param.hdict'</l>
+<l>RetrainedModelFileName := 'logs/segment_pill_defects.hdl'</l>
+<l>query_available_dl_devices (['runtime', 'runtime'], ['gpu', 'cpu'], DLDeviceHandles)</l>
+<l>if (|DLDeviceHandles| == 0)</l>
+<l>    throw ('No supported device found to continue this example.')</l>
+<l>endif</l>
+<l>DLDevice := DLDeviceHandles[0]</l>
+<l>BatchSizeInference := 1</l>
+<l>read_dl_model (RetrainedModelFileName, DLModelHandle)</l>
+<l>get_dl_model_param (DLModelHandle, 'class_names', ClassNames)</l>
+<l>get_dl_model_param (DLModelHandle, 'class_ids', ClassIDs)</l>
+<l>set_dl_model_param (DLModelHandle, 'batch_size', BatchSizeInference)</l>
+<l>set_dl_model_param (DLModelHandle, 'device', DLDevice)</l>
+<l>read_dict (PreprocessParamFileName, [], [], DLPreprocessParam)</l>
+<l>return ()</l>
+</body>
+<docu id="init">
+<parameters>
+<parameter id="ClassIDs"/>
+<parameter id="ClassNames"/>
+<parameter id="DLModelHandle"/>
+<parameter id="DLPreprocessParam"/>
+</parameters>
+</docu>
+</procedure>
+</hdevelop>

@@ -1,0 +1,13 @@
+D:\desk\winform\devide\devide\bin\Debug\devide.exe.config
+D:\desk\winform\devide\devide\bin\Debug\devide.exe
+D:\desk\winform\devide\devide\bin\Debug\devide.pdb
+D:\desk\winform\devide\devide\bin\Debug\halcondotnet.dll
+D:\desk\winform\devide\devide\bin\Debug\halcondotnet.xml
+D:\desk\winform\devide\devide\obj\Debug\devide.csproj.AssemblyReference.cache
+D:\desk\winform\devide\devide\obj\Debug\devide.Form1.resources
+D:\desk\winform\devide\devide\obj\Debug\devide.Properties.Resources.resources
+D:\desk\winform\devide\devide\obj\Debug\devide.csproj.GenerateResource.cache
+D:\desk\winform\devide\devide\obj\Debug\devide.csproj.CoreCompileInputs.cache
+D:\desk\winform\devide\devide\obj\Debug\devide.csproj.CopyComplete
+D:\desk\winform\devide\devide\obj\Debug\devide.exe
+D:\desk\winform\devide\devide\obj\Debug\devide.pdb

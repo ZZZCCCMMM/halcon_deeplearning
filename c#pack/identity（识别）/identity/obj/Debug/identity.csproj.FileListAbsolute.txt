@@ -1,0 +1,11 @@
+D:\desk\winform\identity\identity\obj\Debug\identity.csproj.AssemblyReference.cache
+D:\desk\winform\identity\identity\obj\Debug\identity.Form1.resources
+D:\desk\winform\identity\identity\obj\Debug\identity.Properties.Resources.resources
+D:\desk\winform\identity\identity\obj\Debug\identity.csproj.GenerateResource.cache
+D:\desk\winform\identity\identity\obj\Debug\identity.csproj.CoreCompileInputs.cache
+D:\desk\winform\identity\identity\bin\Debug\identity.exe.config
+D:\desk\winform\identity\identity\bin\Debug\identity.exe
+D:\desk\winform\identity\identity\bin\Debug\identity.pdb
+D:\desk\winform\identity\identity\obj\Debug\identity.csproj.CopyComplete
+D:\desk\winform\identity\identity\obj\Debug\identity.exe
+D:\desk\winform\identity\identity\obj\Debug\identity.pdb

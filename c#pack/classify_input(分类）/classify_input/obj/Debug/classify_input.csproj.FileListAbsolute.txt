@@ -1,0 +1,11 @@
+D:\desk\winform\classify_input\classify_input\bin\Debug\classify_input.exe.config
+D:\desk\winform\classify_input\classify_input\bin\Debug\classify_input.exe
+D:\desk\winform\classify_input\classify_input\bin\Debug\classify_input.pdb
+D:\desk\winform\classify_input\classify_input\obj\Debug\classify_input.csproj.AssemblyReference.cache
+D:\desk\winform\classify_input\classify_input\obj\Debug\classify_input.Form1.resources
+D:\desk\winform\classify_input\classify_input\obj\Debug\classify_input.Properties.Resources.resources
+D:\desk\winform\classify_input\classify_input\obj\Debug\classify_input.csproj.GenerateResource.cache
+D:\desk\winform\classify_input\classify_input\obj\Debug\classify_input.csproj.CoreCompileInputs.cache
+D:\desk\winform\classify_input\classify_input\obj\Debug\classify_input.csproj.CopyComplete
+D:\desk\winform\classify_input\classify_input\obj\Debug\classify_input.exe
+D:\desk\winform\classify_input\classify_input\obj\Debug\classify_input.pdb
